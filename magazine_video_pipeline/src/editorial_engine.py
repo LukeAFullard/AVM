@@ -60,7 +60,7 @@ class EditorialEngine:
             if workspace.is_dir():
                 self.process_workspace(workspace)
 
-    def process_workspace(self, workspace_path: Path):
+    def process_workspace(self, workspace_path: Path, story_feedback: str = None, visual_feedback: str = None):
         logger.info(f"Processing editorial for workspace: {workspace_path}")
         try:
             # 1. Topic Detector
@@ -70,13 +70,13 @@ class EditorialEngine:
 
             # 2. Story Selector
             storyboard_path = workspace_path / "03_storyboard.json"
-            if not storyboard_path.exists():
-                self.run_story_selector(workspace_path)
+            if not storyboard_path.exists() or story_feedback:
+                self.run_story_selector(workspace_path, feedback=story_feedback)
 
             # 3. Visual Planner
             render_manifest_path = workspace_path / "05_render_manifest.json"
-            if not render_manifest_path.exists():
-                self.run_visual_planner(workspace_path)
+            if not render_manifest_path.exists() or visual_feedback:
+                self.run_visual_planner(workspace_path, feedback=visual_feedback)
         except Exception as e:
             logger.error(f"Error processing workspace {workspace_path}: {e}")
 
@@ -107,7 +107,7 @@ Provide the evaluation in strict JSON format according to the requested schema.
             json.dump(result, f, indent=2)
         logger.info(f"Saved {output_file}")
 
-    def run_story_selector(self, workspace_path: Path):
+    def run_story_selector(self, workspace_path: Path, feedback: str = None):
         logger.info("Running Story Selector Agent...")
         input_file = workspace_path / "02_topic_evaluation.json"
         if not input_file.exists():
@@ -123,9 +123,12 @@ Provide exactly 3 distinct hooks and between 2 and 5 body scenes.
 
 Topic Evaluation:
 {json.dumps(topic_data, indent=2)}
-
-Provide the storyboard in strict JSON format according to the requested schema.
 """
+        if feedback:
+            prompt += f"\nPrevious attempt failed quality gates. Please fix the following issue:\n{feedback}\n"
+
+        prompt += "\nProvide the storyboard in strict JSON format according to the requested schema.\n"
+
         schema = self._load_schema("storyboard.schema.json")
         result = self._generate_json(prompt, schema)
 
@@ -134,7 +137,7 @@ Provide the storyboard in strict JSON format according to the requested schema.
             json.dump(result, f, indent=2)
         logger.info(f"Saved {output_file}")
 
-    def run_visual_planner(self, workspace_path: Path):
+    def run_visual_planner(self, workspace_path: Path, feedback: str = None):
         logger.info("Running Visual Planner Agent...")
         input_file = workspace_path / "03_storyboard.json"
         if not input_file.exists():
@@ -150,9 +153,12 @@ Assign a specific visual style and transition settings to match the mood of the 
 
 Storyboard Narrative:
 {json.dumps(storyboard_data, indent=2)}
-
-Provide the render manifest in strict JSON format according to the requested schema.
 """
+        if feedback:
+            prompt += f"\nPrevious attempt failed quality gates. Please fix the following issue:\n{feedback}\n"
+
+        prompt += "\nProvide the render manifest in strict JSON format according to the requested schema.\n"
+
         schema = self._load_schema("render_manifest.schema.json")
         result = self._generate_json(prompt, schema)
 

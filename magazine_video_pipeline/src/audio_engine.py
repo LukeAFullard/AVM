@@ -134,7 +134,7 @@ class AudioEngine:
                 self.process_narration(audio_dir, scene_id, narration)
 
     def process_narration(self, audio_dir: Path, block_id: str, text: str):
-        wav_path = audio_dir / f"{block_id}.wav"
+        wav_path = audio_dir / f"narration_{block_id}.wav"
         json_path = audio_dir / f"timestamps_{block_id}.json"
 
         if wav_path.exists() and json_path.exists():
