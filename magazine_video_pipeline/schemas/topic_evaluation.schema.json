@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TopicEvaluationResult",
+  "type": "object",
+  "required": ["article_id", "headline", "summary", "target_block_ids", "scores"],
+  "properties": {
+    "article_id": { "type": "string" },
+    "headline": { "type": "string" },
+    "summary": { "type": "string" },
+    "target_block_ids": { "type": "array", "items": { "type": "string" } },
+    "scores": {
+      "type": "object",
+      "required": ["novelty", "historical_value", "humor", "controversy", "surprise", "visual_quality", "overall_estimate"],
+      "properties": {
+        "novelty": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "historical_value": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "humor": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "controversy": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "surprise": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "visual_quality": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "overall_estimate": { "type": "number", "minimum": 1.0, "maximum": 10.0 }
+      }
+    }
+  }
+}
