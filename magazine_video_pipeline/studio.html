@@ -41,7 +41,7 @@
         function updateFrame(frame) {
             timeDisplay.innerText = `Frame: ${frame}`;
             if (iframe.contentWindow && iframe.contentWindow.seekToFrame) {
-                iframe.contentWindow.seekToFrame(frame, fps, totalFrames);
+                iframe.contentWindow.seekToFrame(frame, fps);
             }
         }
 
