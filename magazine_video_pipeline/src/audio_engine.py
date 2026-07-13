@@ -69,10 +69,10 @@ class AudioEngine:
             word_data.append({
                 "text": word,
                 "start": current_time,
-                "end": current_time + 0.5,
+                "end": current_time + 0.4,
                 "confidence": 0.99
             })
-            current_time += 0.5
+            current_time += 0.4
 
         data = {
             "text": text,
