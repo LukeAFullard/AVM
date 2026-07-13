@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --xmin: {{ bbox[0] }};
@@ -10,7 +11,7 @@
       --ymax: {{ bbox[3] }};
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: 'Impact', 'Arial Black', sans-serif; }
+    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: 'Playfair Display', 'Impact', 'Arial Black', sans-serif; }
     #viewport { width: 1080px; height: 1920px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 
     .magazine-container { width: 900px; height: 1300px; position: absolute; top: 150px; overflow: hidden; border-radius: 12px; box-shadow: 0px 20px 50px rgba(0,0,0,0.8); border: 2px solid #333; transition: none; }
@@ -23,12 +24,14 @@
 
     #progress-bar { position: absolute; bottom: 0; left: 0; height: 8px; background: #FFD700; width: 0%; z-index: 20; }
     #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.8) 150%); pointer-events: none; z-index: 30; }
+    #film-grain { position: absolute; inset: 0; background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E'); opacity: 0.15; pointer-events: none; z-index: 90; }
     #fade-overlay { position: absolute; inset: 0; background: black; pointer-events: none; z-index: 100; opacity: 1; }
   </style>
 </head>
 <body>
   <div id="viewport">
     <div id="vignette"></div>
+    <div id="film-grain"></div>
     <div id="fade-overlay"></div>
     <div id="progress-bar"></div>
     <div class="magazine-container" id="mag-container">
@@ -49,6 +52,7 @@
     const magContainer = document.getElementById('mag-container');
     const progressBar = document.getElementById('progress-bar');
     const fadeOverlay = document.getElementById('fade-overlay');
+    const filmGrain = document.getElementById('film-grain');
 
     const xmin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--xmin'));
     const ymin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ymin'));
@@ -66,14 +70,11 @@
       const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic Ease-Out
 
       const currentScale = 1 + (targetScale - 1) * easeProgress;
-      const currentTx = targetTranslateX * easeProgress;
-      const currentTy = targetTranslateY * easeProgress;
+      let currentTx = targetTranslateX * easeProgress;
+      let currentTy = targetTranslateY * easeProgress;
 
-      magImage.style.transform = `scale(${currentScale}) translate(${currentTx}%, ${currentTy}%)`;
-
-      // Dynamic Shadow (increases as we zoom in)
-      const shadowBlur = 50 + (currentScale * 20);
-      magContainer.style.boxShadow = `0px 20px ${shadowBlur}px rgba(0,0,0,0.8)`;
+      // Film grain flickering (math shift)
+      filmGrain.style.backgroundPosition = `${(frame * 17) % 100}px ${(frame * 23) % 100}px`;
 
       // Fade In / Out
       if (progress < 0.05) {
@@ -106,6 +107,12 @@
             w.element.style.transform = `scale(0.95)`;
         }
       }
+
+      magImage.style.transform = `scale(${currentScale}) translate(${currentTx}%, ${currentTy}%)`;
+
+      // Dynamic Shadow (increases as we zoom in)
+      const shadowBlur = 50 + (currentScale * 20);
+      magContainer.style.boxShadow = `0px 20px ${shadowBlur}px rgba(0,0,0,0.8)`;
     };
   </script>
 </body>
