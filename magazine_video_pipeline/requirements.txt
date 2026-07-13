@@ -1,3 +1,6 @@
 playwright
 jinja2
 llama-cpp-python
+pdf2image
+pytesseract
+Pillow
