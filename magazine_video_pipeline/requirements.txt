@@ -4,3 +4,6 @@ llama-cpp-python
 pdf2image
 pytesseract
 Pillow
+piper-tts
+whisper-timestamped
+openai-whisper
