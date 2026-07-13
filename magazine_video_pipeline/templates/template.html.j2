@@ -45,14 +45,48 @@
   </div>
   <script>
     // Remotion-style Animation Utilities
+    const random = (seed) => {
+        let t = seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+
     const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
-    const interpolate = (value, inputRange, outputRange) => {
+    // Easing functions
+    const Easing = {
+        linear: (t) => t,
+        quad: (t) => t * t,
+        cubic: (t) => t * t * t,
+        out: (easing) => (t) => 1 - easing(1 - t),
+        inOut: (easing) => (t) => {
+            if (t < 0.5) {
+                return easing(t * 2) / 2;
+            }
+            return 1 - easing((1 - t) * 2) / 2;
+        }
+    };
+
+    const interpolate = (value, inputRange, outputRange, options = {}) => {
+        const { easing = Easing.linear, extrapolateLeft = 'clamp', extrapolateRight = 'clamp' } = options;
         const [inMin, inMax] = inputRange;
         const [outMin, outMax] = outputRange;
-        const result = outMin + ((value - inMin) * (outMax - outMin)) / (inMax - inMin);
-        // Default to clamp extrapolation
-        return clamp(result, Math.min(outMin, outMax), Math.max(outMin, outMax));
+
+        // Easing interpolation requires normalizing input between 0 and 1
+        let progress = (value - inMin) / (inMax - inMin);
+
+        // Extrapolate logic
+        if (progress < 0) {
+            if (extrapolateLeft === 'clamp') progress = 0;
+        } else if (progress > 1) {
+            if (extrapolateRight === 'clamp') progress = 1;
+        }
+
+        const easedProgress = easing(progress);
+
+        // Linearly map the eased progress back to output range
+        return outMin + (easedProgress * (outMax - outMin));
     };
 
     // Remotion-style Sequence Utility
@@ -113,24 +147,24 @@
       const progress = clamp(frame / totalFrames, 0, 1);
 
       // Remotion-style interpolations
-      const currentScale = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [1, targetScale]);
-      let currentTx = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [0, targetTranslateX]);
-      let currentTy = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [0, targetTranslateY]);
+      const currentScale = interpolate(progress, [0, 1], [1, targetScale], { easing: Easing.out(Easing.cubic) });
+      let currentTx = interpolate(progress, [0, 1], [0, targetTranslateX], { easing: Easing.out(Easing.cubic) });
+      let currentTy = interpolate(progress, [0, 1], [0, targetTranslateY], { easing: Easing.out(Easing.cubic) });
 
       // Film grain flickering (math shift)
-      filmGrain.style.backgroundPosition = `${(frame * 17) % 100}px ${(frame * 23) % 100}px`;
+      filmGrain.style.backgroundPosition = `${random(frame) * 100}px ${random(frame + 1000) * 100}px`;
 
       // Fade In / Out using interpolate
       if (progress < 0.05) {
-          fadeOverlay.style.opacity = interpolate(progress, [0, 0.05], [1, 0]);
+          fadeOverlay.style.opacity = interpolate(progress, [0, 0.05], [1, 0], { easing: Easing.linear });
       } else if (progress > 0.95) {
-          fadeOverlay.style.opacity = interpolate(progress, [0.95, 1], [0, 1]);
+          fadeOverlay.style.opacity = interpolate(progress, [0.95, 1], [0, 1], { easing: Easing.linear });
       } else {
           fadeOverlay.style.opacity = 0;
       }
 
       // Progress bar using interpolate
-      progressBar.style.width = `${interpolate(progress, [0, 1], [0, 100])}%`;
+      progressBar.style.width = `${interpolate(progress, [0, 1], [0, 100], { easing: Easing.linear })}%`;
 
       for (let i = 0; i < words.length; i++) {
         const w = words[i];
@@ -155,7 +189,7 @@
                 config: { damping: 10, mass: 1, stiffness: 100 }
             });
             // Map spring progress [0, 1] to scale [0.95, 1.15]
-            const popScale = interpolate(springProgress, [0, 1], [0.95, 1.15]);
+            const popScale = interpolate(springProgress, [0, 1], [0.95, 1.15], { easing: Easing.linear });
             w.element.style.transform = `scale(${popScale})`;
         } else if (isPast) {
             w.element.classList.add('past');
@@ -168,7 +202,7 @@
       magImage.style.transform = `scale(${currentScale}) translate(${currentTx}%, ${currentTy}%)`;
 
       // Dynamic Shadow using interpolate
-      const shadowBlur = interpolate(currentScale, [1, targetScale], [50, 50 + (targetScale * 20)]);
+      const shadowBlur = interpolate(currentScale, [1, targetScale], [50, 50 + (targetScale * 20)], { easing: Easing.linear });
       magContainer.style.boxShadow = `0px 20px ${shadowBlur}px rgba(0,0,0,0.8)`;
     };
   </script>
