@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StorySelectorBlueprint",
+  "type": "object",
+  "required": ["project_id", "selected_article_id", "hooks", "body_scenes"],
+  "properties": {
+    "project_id": { "type": "string" },
+    "selected_article_id": { "type": "string" },
+    "hooks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["hook_id", "variant_type", "spoken_narration", "estimated_duration"],
+        "properties": {
+          "hook_id": { "type": "string", "enum": ["hook_a", "hook_b", "hook_c"] },
+          "variant_type": { "type": "string", "enum": ["retro_absurdity", "historical_irony", "modern_parallel"] },
+          "spoken_narration": { "type": "string" },
+          "estimated_duration": { "type": "number", "minimum": 1.5, "maximum": 5.0 }
+        }
+      }
+    },
+    "body_scenes": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["scene_id", "chronological_order", "spoken_narration", "estimated_duration", "narrative_purpose"],
+        "properties": {
+          "scene_id": { "type": "string" },
+          "chronological_order": { "type": "integer" },
+          "spoken_narration": { "type": "string" },
+          "estimated_duration": { "type": "number", "minimum": 2.0, "maximum": 12.0 },
+          "narrative_purpose": { "type": "string", "enum": ["context_setup", "escalation", "twist_climax", "aftermath"] }
+        }
+      }
+    }
+  }
+}

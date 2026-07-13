@@ -1,0 +1,26 @@
+{
+  "project_id": "time_1986_page_36",
+  "global_style": {
+    "color_palette": "vintage_sepia",
+    "caption_style": "bold_impact",
+    "background_texture": "paper_grain"
+  },
+  "scene_manifests": [
+    {
+      "scene_ref_id": "hook_a",
+      "template_component": "headline_zoom",
+      "visual_source": {
+        "source_type": "magazine_scan",
+        "target_page_number": 36,
+        "crop_bbox_pct": [
+          10.0,
+          10.0,
+          90.0,
+          90.0
+        ]
+      },
+      "transition_in": "fade",
+      "foley_trigger": "none"
+    }
+  ]
+}
