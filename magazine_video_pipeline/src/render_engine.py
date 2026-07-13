@@ -33,7 +33,7 @@ class PlaywrightRenderEngine:
         scene_config = next(s for s in manifest["scene_manifests"] if s["scene_ref_id"] == scene_id)
         return scene_config, formatted_ts
 
-    def build_html_payload(self, scene_config: dict, timestamps: list) -> Path:
+    def build_html_payload(self, scene_config: dict, timestamps: list, duration_sec: float) -> Path:
         template = self.env.get_template("template.html.j2")
         image_path = self.project_dir / "00_source_page.png"
         bbox = scene_config["visual_source"].get("crop_bbox_pct", [0, 0, 100, 100])
@@ -41,7 +41,8 @@ class PlaywrightRenderEngine:
         html_content = template.render(
             image_path=f"file://{image_path.absolute()}",
             bbox=bbox,
-            timestamps=timestamps
+            timestamps=timestamps,
+            duration_sec=duration_sec
         )
         temp_html = self.project_dir / "temp_render.html"
         with open(temp_html, "w", encoding="utf-8") as f:
@@ -50,7 +51,7 @@ class PlaywrightRenderEngine:
 
     def render_scene_to_mp4(self, scene_id: str, duration_sec: float):
         scene_config, timestamps = self.load_artifacts(scene_id)
-        temp_html_path = self.build_html_payload(scene_config, timestamps)
+        temp_html_path = self.build_html_payload(scene_config, timestamps, duration_sec)
 
         audio_path = self.project_dir / "04_audio_payload" / f"narration_{scene_id}.wav"
         output_mp4 = self.project_dir / "06_exports" / f"{scene_id}.mp4"
@@ -76,7 +77,7 @@ class PlaywrightRenderEngine:
 
             try:
                 for frame in range(total_frames):
-                    page.evaluate(f"window.seekToFrame({frame}, {self.fps}, {total_frames})")
+                    page.evaluate(f"window.seekToFrame({frame}, {self.fps})")
                     ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
                     if frame % 30 == 0:
                         print(f"[{scene_id}] Progress: {round((frame/total_frames)*100, 1)}%", end="\r")

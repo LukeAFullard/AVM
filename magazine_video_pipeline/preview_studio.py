@@ -28,7 +28,8 @@ def render_preview():
     html_content = template.render(
         bbox=bbox,
         image_path="data/workspace/time_1986_page_36/00_source_page.png",
-        timestamps=timestamps
+        timestamps=timestamps,
+        duration_sec=2.0
     )
 
     html_file = base_dir / "_temp_preview.html"
