@@ -35,7 +35,7 @@
     <div id="fade-overlay"></div>
     <div id="progress-bar"></div>
     <div class="magazine-container" id="mag-container">
-      <img id="magazine-image" src="file://{{ image_path }}" alt="Magazine Scan">
+      <img id="magazine-image" src="{{ image_path }}" alt="Magazine Scan">
     </div>
     <div id="captions-layer">
       {% for item in timestamps %}
@@ -44,6 +44,17 @@
     </div>
   </div>
   <script>
+    // Remotion-style Animation Utilities
+    const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+    const interpolate = (value, inputRange, outputRange) => {
+        const [inMin, inMax] = inputRange;
+        const [outMin, outMax] = outputRange;
+        const result = outMin + ((value - inMin) * (outMax - outMin)) / (inMax - inMin);
+        // Default to clamp extrapolation
+        return clamp(result, Math.min(outMin, outMax), Math.max(outMin, outMax));
+    };
+
     // Initialize coordinate math for Ken Burns zoom
     const words = Array.from(document.querySelectorAll('.word')).map(el => ({
       element: el, start: parseFloat(el.dataset.start), end: parseFloat(el.dataset.end)
@@ -66,27 +77,27 @@
     // Called deterministically by Python Playwright per frame
     window.seekToFrame = function(frame, fps, totalFrames) {
       const currentTime = frame / fps;
-      const progress = Math.min(frame / totalFrames, 1.0);
-      const easeProgress = 1 - Math.pow(1 - progress, 3); // Cubic Ease-Out
+      const progress = clamp(frame / totalFrames, 0, 1);
 
-      const currentScale = 1 + (targetScale - 1) * easeProgress;
-      let currentTx = targetTranslateX * easeProgress;
-      let currentTy = targetTranslateY * easeProgress;
+      // Remotion-style interpolations
+      const currentScale = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [1, targetScale]);
+      let currentTx = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [0, targetTranslateX]);
+      let currentTy = interpolate(1 - Math.pow(1 - progress, 3), [0, 1], [0, targetTranslateY]);
 
       // Film grain flickering (math shift)
       filmGrain.style.backgroundPosition = `${(frame * 17) % 100}px ${(frame * 23) % 100}px`;
 
-      // Fade In / Out
+      // Fade In / Out using interpolate
       if (progress < 0.05) {
-          fadeOverlay.style.opacity = 1 - (progress / 0.05);
+          fadeOverlay.style.opacity = interpolate(progress, [0, 0.05], [1, 0]);
       } else if (progress > 0.95) {
-          fadeOverlay.style.opacity = (progress - 0.95) / 0.05;
+          fadeOverlay.style.opacity = interpolate(progress, [0.95, 1], [0, 1]);
       } else {
           fadeOverlay.style.opacity = 0;
       }
 
-      // Progress bar
-      progressBar.style.width = `${progress * 100}%`;
+      // Progress bar using interpolate
+      progressBar.style.width = `${interpolate(progress, [0, 1], [0, 100])}%`;
 
       for (let i = 0; i < words.length; i++) {
         const w = words[i];
@@ -110,8 +121,8 @@
 
       magImage.style.transform = `scale(${currentScale}) translate(${currentTx}%, ${currentTy}%)`;
 
-      // Dynamic Shadow (increases as we zoom in)
-      const shadowBlur = 50 + (currentScale * 20);
+      // Dynamic Shadow using interpolate
+      const shadowBlur = interpolate(currentScale, [1, targetScale], [50, 50 + (targetScale * 20)]);
       magContainer.style.boxShadow = `0px 20px ${shadowBlur}px rgba(0,0,0,0.8)`;
     };
   </script>
