@@ -1,0 +1,36 @@
+{
+  "text": "Second dummy body scene.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.6,
+      "text": "Second dummy body scene.",
+      "words": [
+        {
+          "text": "Second",
+          "start": 0.0,
+          "end": 0.4,
+          "confidence": 0.99
+        },
+        {
+          "text": "dummy",
+          "start": 0.4,
+          "end": 0.8,
+          "confidence": 0.99
+        },
+        {
+          "text": "body",
+          "start": 0.8,
+          "end": 1.2000000000000002,
+          "confidence": 0.99
+        },
+        {
+          "text": "scene.",
+          "start": 1.2000000000000002,
+          "end": 1.6,
+          "confidence": 0.99
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "text": "A dummy hook.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 1.2000000000000002,
+      "text": "A dummy hook.",
+      "words": [
+        {
+          "text": "A",
+          "start": 0.0,
+          "end": 0.4,
+          "confidence": 0.99
+        },
+        {
+          "text": "dummy",
+          "start": 0.4,
+          "end": 0.8,
+          "confidence": 0.99
+        },
+        {
+          "text": "hook.",
+          "start": 0.8,
+          "end": 1.2000000000000002,
+          "confidence": 0.99
+        }
+      ]
+    }
+  ]
+}

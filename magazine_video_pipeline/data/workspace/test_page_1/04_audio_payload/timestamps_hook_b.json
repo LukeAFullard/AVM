@@ -1,0 +1,24 @@
+{
+  "text": "Another hook.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 0.8,
+      "text": "Another hook.",
+      "words": [
+        {
+          "text": "Another",
+          "start": 0.0,
+          "end": 0.4,
+          "confidence": 0.99
+        },
+        {
+          "text": "hook.",
+          "start": 0.4,
+          "end": 0.8,
+          "confidence": 0.99
+        }
+      ]
+    }
+  ]
+}
