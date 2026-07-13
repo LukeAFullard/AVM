@@ -16,9 +16,22 @@ class PlaywrightRenderEngine:
         with open(self.project_dir / "05_render_manifest.json") as f:
             manifest = json.load(f)
         with open(self.project_dir / "04_audio_payload" / f"timestamps_{scene_id}.json") as f:
-            timestamps = json.load(f)
+            ts_payload = json.load(f)
+
+        formatted_ts = []
+        if isinstance(ts_payload, list):
+            formatted_ts = ts_payload
+        elif isinstance(ts_payload, dict) and "segments" in ts_payload:
+            for seg in ts_payload.get("segments", []):
+                for w in seg.get("words", []):
+                    formatted_ts.append({
+                        "word": w.get("text", ""),
+                        "start": w.get("start", 0.0),
+                        "end": w.get("end", 0.0)
+                    })
+
         scene_config = next(s for s in manifest["scene_manifests"] if s["scene_ref_id"] == scene_id)
-        return scene_config, timestamps
+        return scene_config, formatted_ts
 
     def build_html_payload(self, scene_config: dict, timestamps: list) -> Path:
         template = self.env.get_template("template.html.j2")
