@@ -35,6 +35,55 @@ class EditorialEngine:
         if not self.llm:
             raise ValueError("Llama model is not initialized.")
 
+        if self.llm == "dummy":
+            # Generate dummy output for testing based on expected structures
+            schema_title = schema.get("title", "")
+            if schema_title == "TopicEvaluationResult":
+                return {
+                    "article_id": "dummy_1",
+                    "headline": "Dummy Headline",
+                    "summary": "Dummy Summary",
+                    "target_block_ids": ["b1"],
+                    "scores": {
+                        "novelty": 5, "historical_value": 5, "humor": 5, "controversy": 5, "surprise": 5, "visual_quality": 5, "overall_estimate": 5.0
+                    }
+                }
+            elif schema_title == "StorySelectorBlueprint":
+                return {
+                    "project_id": "dummy_p1",
+                    "selected_article_id": "dummy_1",
+                    "hooks": [
+                        {"hook_id": "hook_a", "variant_type": "retro_absurdity", "spoken_narration": "A dummy hook.", "estimated_duration": 2.0},
+                        {"hook_id": "hook_b", "variant_type": "historical_irony", "spoken_narration": "Another hook.", "estimated_duration": 3.0},
+                        {"hook_id": "hook_c", "variant_type": "modern_parallel", "spoken_narration": "A third hook.", "estimated_duration": 4.0}
+                    ],
+                    "body_scenes": [
+                        {"scene_id": "s1", "chronological_order": 1, "spoken_narration": "Dummy body scene narration.", "estimated_duration": 5.0, "narrative_purpose": "context_setup"},
+                        {"scene_id": "s2", "chronological_order": 2, "spoken_narration": "Second dummy body scene.", "estimated_duration": 6.0, "narrative_purpose": "escalation"}
+                    ]
+                }
+            elif schema_title == "VisualRenderManifest":
+                return {
+                    "project_id": "dummy_p1",
+                    "global_style": {
+                        "color_palette": "vintage", "caption_style": "bold", "background_texture": "grain"
+                    },
+                    "scene_manifests": [
+                        {
+                            "scene_ref_id": "hook_a", "template_component": "headline_zoom",
+                            "visual_source": {"source_type": "magazine_scan", "target_page_number": 1, "crop_bbox_pct": [10.0, 10.0, 50.0, 50.0], "broll_search_query": ""},
+                            "transition_in": "fade", "foley_trigger": "none"
+                        },
+                        {
+                            "scene_ref_id": "s1", "template_component": "column_drift",
+                            "visual_source": {"source_type": "magazine_scan", "target_page_number": 1, "crop_bbox_pct": [20.0, 20.0, 80.0, 80.0], "broll_search_query": ""},
+                            "transition_in": "cut", "foley_trigger": "none"
+                        }
+                    ]
+                }
+            else:
+                return {}
+
         grammar = LlamaGrammar.from_json_schema(json.dumps(schema))
 
         response = self.llm(
