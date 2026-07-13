@@ -35,3 +35,12 @@ If approved, the implementation steps will be:
    - Execute existing pipeline tests to ensure no regressions.
 4. **Commit and Push**
    - Submit the finished polish to the codebase.
+
+## Future Considerations for Professional Polish
+
+As the pipeline evolves, consider the following enhancements to further improve production quality:
+
+* **Dynamic Panning:** Instead of a direct cubic zoom to the bounding box, mathematically trace a pan path tracking the currently active word's (X, Y) coordinates, allowing the "camera" to follow along the line of text.
+* **Custom Fonts:** Support injecting custom `.ttf` or `.woff2` files (or Google Fonts) into the template to match the typography to the specific era of the vintage magazine being processed.
+* **Sound Effects (SFX):** Integrate a secondary audio track layer via FFmpeg to include page turns, vintage projector hums, or subtle "pops" aligned with the caption timings to boost viewer immersion.
+* **Film Grain:** A noise overlay `div` that has its `background-position` mathematically shifted frame-by-frame to simulate old film flickering.
