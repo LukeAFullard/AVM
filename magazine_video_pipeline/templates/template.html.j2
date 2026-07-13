@@ -55,6 +55,15 @@
         return clamp(result, Math.min(outMin, outMax), Math.max(outMin, outMax));
     };
 
+    // Remotion-style Sequence Utility
+    const Sequence = ({ frame, from, durationInFrames }) => {
+        const localFrame = frame - from;
+        const isActive = localFrame >= 0 && localFrame < durationInFrames;
+        const clampedLocalFrame = clamp(localFrame, 0, durationInFrames - 1);
+        const isPast = localFrame >= durationInFrames;
+        return { isActive, localFrame: clampedLocalFrame, isPast, rawLocalFrame: localFrame };
+    };
+
     // Remotion-style Spring Utility
     const spring = ({ frame, fps, config }) => {
         const { damping, mass, stiffness } = config;
@@ -127,20 +136,28 @@
         const w = words[i];
         w.element.classList.remove('active', 'past');
 
-        if (currentTime >= w.start && currentTime <= w.end) {
+        const wordStartFrame = w.start * fps;
+        const wordDurationFrames = (w.end - w.start) * fps;
+
+        const { isActive, localFrame, isPast } = Sequence({
+            frame: frame,
+            from: wordStartFrame,
+            durationInFrames: wordDurationFrames
+        });
+
+        if (isActive) {
             w.element.classList.add('active');
 
-            // Calculate pop/bounce math based on time since word started using Remotion-style spring
-            const framePassed = (currentTime - w.start) * fps;
+            // Calculate pop/bounce math based on localFrame using Remotion-style spring
             const springProgress = spring({
-                frame: framePassed,
+                frame: localFrame,
                 fps: fps,
                 config: { damping: 10, mass: 1, stiffness: 100 }
             });
             // Map spring progress [0, 1] to scale [0.95, 1.15]
             const popScale = interpolate(springProgress, [0, 1], [0.95, 1.15]);
             w.element.style.transform = `scale(${popScale})`;
-        } else if (currentTime > w.end) {
+        } else if (isPast) {
             w.element.classList.add('past');
             w.element.style.transform = `scale(1.0)`;
         } else {
