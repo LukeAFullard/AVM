@@ -39,7 +39,7 @@ class PlaywrightRenderEngine:
         bbox = scene_config["visual_source"].get("crop_bbox_pct", [0, 0, 100, 100])
 
         html_content = template.render(
-            image_path=image_path.absolute(),
+            image_path=f"file://{image_path.absolute()}",
             bbox=bbox,
             timestamps=timestamps
         )
