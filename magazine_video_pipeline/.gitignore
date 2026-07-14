@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 06_exports/*.mp4
+
+data/workspace/
+*.mp4
+*.wav
