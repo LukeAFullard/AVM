@@ -1,0 +1,12 @@
+---
+description: Repository Rule (Git/Commits)
+globs: **/*
+---
+
+# Git Constraints
+
+Never commit generated pipeline artifacts to version control. This includes but is not limited to:
+- `.wav` audio files
+- `.json` timestamps or other generated JSON payloads (unless explicitly intended as a static test fixture)
+- `.mp4` video files
+- The entire contents of the `data/workspace/` directory or its subdirectories.
