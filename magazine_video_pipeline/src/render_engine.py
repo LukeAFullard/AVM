@@ -63,6 +63,7 @@ class PlaywrightRenderEngine:
             manifest = json.load(f)
 
         scene_config, timestamps = self.load_artifacts(scene_id)
+
         temp_html_path = self.build_html_payload(scene_config, timestamps, duration_sec, global_style=manifest.get("global_style"))
 
         audio_path = self.project_dir / "04_audio_payload" / f"narration_{scene_id}.wav"
@@ -81,7 +82,7 @@ class PlaywrightRenderEngine:
         ]
 
         print(f"[{scene_id}] Launching FFmpeg and Playwright ({total_frames} frames @ {self.fps} FPS)...")
-        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None)
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -92,7 +93,12 @@ class PlaywrightRenderEngine:
             try:
                 for frame in range(total_frames):
                     page.evaluate(f"window.seekToFrame({frame}, {self.fps})")
-                    ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
+                    try:
+                        ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
+                    except BrokenPipeError:
+                        # ffmpeg gracefully finished processing frames due to -shortest flag
+                        break
+
                     if frame % 30 == 0:
                         print(f"[{scene_id}] Progress: {round((frame/total_frames)*100, 1)}%", end="\r")
             finally:
