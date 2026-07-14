@@ -1,31 +1,9 @@
 ---
-description: Testing constraints and Dummy Mode
-globs: test_*.py, run_*.py
+description: Test execution and verification constraints.
+globs: tests/*.py, run_render_test.py
 ---
-
 # Testing Rules
 
-## Running Tests
-To run tests correctly within the project structure, navigate to the pipeline directory and set the python path to src:
-```bash
-cd magazine_video_pipeline && PYTHONPATH=src python -m pytest <test_file>
-```
-
-Render testing can be executed directly to compile test video segments and verify animations via:
-```bash
-cd magazine_video_pipeline && PYTHONPATH=src python run_render_test.py
-```
-
-## Dummy Mode
-The `EditorialEngine` and `AudioEngine` both support a 'dummy' mode (e.g., `--model_path dummy` or `--voice_model dummy`) to bypass model inference.
-
-When dummy mode is used, they generate mock payloads that match the expected JSON schemas (using schema titles like `TopicEvaluationResult`) for testing. Use this mode extensively for testing the pipeline locally without requiring the large GGUF or Piper models to be loaded.
-
-## Quality Gatekeeper
-The `VideoQualityGatekeeper` enforces strict pipeline constraints, such as ensuring generated narration falls between 135 and 185 Words Per Minute (WPM). Tests should account for these constraints.
-
-## Frontend Verification
-Frontend UI changes require visual verification using `frontend_verification_instructions` to generate a screenshot (.png) and video (.webm) demonstrating the changes.
-
-## External APIs
-Avoid external APIs when adding new features or polish to the pipeline. Keep it completely local.
+- To run tests correctly within the project structure, navigate to the pipeline directory and set the python path to src: `cd magazine_video_pipeline && PYTHONPATH=src python -m pytest <test_file>`.
+- Render testing can be executed directly to compile test video segments and verify animations via `cd magazine_video_pipeline && PYTHONPATH=src python run_render_test.py`.
+- The `EditorialEngine` and `AudioEngine` both support a 'dummy' mode (e.g., `--model_path dummy` or `--voice_model dummy`) to bypass model inference, generating mock payloads that match expected JSON schemas.
