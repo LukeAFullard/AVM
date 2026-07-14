@@ -209,21 +209,10 @@
         }
       }
 
-      // Dynamic Panning: Track active word
-      let activeWordIndex = words.findIndex(w => frame >= w.start * fps && frame <= w.end * fps);
-      if (activeWordIndex === -1) {
-          activeWordIndex = words.findIndex(w => frame < w.start * fps);
-      }
-      if (activeWordIndex === -1) activeWordIndex = words.length - 1;
-
-      let panProgress = 0;
-      if (activeWordIndex >= 0 && words.length > 0) {
-          panProgress = activeWordIndex / words.length;
-      }
-      // Pan translation (minor horizontal shift tracking text progress)
-      // Pan max horizontal offset = 10%
-      const panTx = interpolate(panProgress, [0, 1], [0, -10], { easing: Easing.linear });
-      const panTy = interpolate(panProgress, [0, 1], [0, -5], { easing: Easing.linear });
+      // Dynamic Panning: Smooth continuous pan over the scene duration
+      // Pan max horizontal offset = 10%, vertical = 5%
+      const panTx = interpolate(progress, [0, 1], [0, -10], { easing: Easing.linear });
+      const panTy = interpolate(progress, [0, 1], [0, -5], { easing: Easing.linear });
 
       magImage.style.transform = `scale(${currentScale}) translate(${currentTx + panTx}%, ${currentTy + panTy}%)`;
 
