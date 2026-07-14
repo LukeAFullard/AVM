@@ -175,6 +175,14 @@ Provide the evaluation in strict JSON format according to the requested schema.
 
         prompt = f"""You are an expert story selector and scriptwriter.
 Based on the following topic evaluation from a vintage magazine article, generate a compelling short-form video script.
+
+CRITICAL TIKTOK HOOK FRAMEWORK:
+The first 3 seconds (hooks) must be hyper-engaging to maximize retention. Use techniques such as:
+1. Negative Hooks (e.g., "Stop doing X", "The dark truth about Y").
+2. Open Loops (e.g., "This one secret changed everything...").
+3. Controversial or Absurd Statements (e.g., "Why everyone in the 1950s was wrong about Z").
+The spoken narration for each hook MUST be punchy, curiosity-inducing, and under 15 words.
+
 Provide exactly 3 distinct hooks and between 2 and 5 body scenes.
 You must include an 'aftermath' scene at the end that acts as a conclusion, explicitly addressing "Where are they now?" or "What happened next?" to link the past historical events to the present day.
 

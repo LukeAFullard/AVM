@@ -5,6 +5,8 @@ import argparse
 import wave
 import math
 import struct
+import urllib.request
+import urllib.parse
 from pathlib import Path
 
 # Try to import external dependencies, fall back gracefully if missing (for early syntax checks)
@@ -22,11 +24,19 @@ class AudioEngine:
     def __init__(self, voice_model: str, workspace_dir: str = "data/workspace"):
         self.workspace_dir = Path(workspace_dir)
         self.dummy_mode = (voice_model == "dummy")
+        self.elevenlabs_api_key = os.environ.get("ELEVENLABS_API_KEY")
 
         if self.dummy_mode:
             logger.info("Initializing AudioEngine in DUMMY mode.")
             self.voice = None
             self.whisper_model = None
+        elif self.elevenlabs_api_key:
+            logger.info("Initializing AudioEngine in ELEVENLABS mode.")
+            self.voice = None
+            if not HAS_DEPS:
+                 raise ImportError("Required dependencies (whisper_timestamped) are not installed for alignment.")
+            logger.info("Loading Whisper model (tiny) for alignment")
+            self.whisper_model = whisper.load_model("tiny", device="cpu")
         else:
             if not HAS_DEPS:
                 raise ImportError("Required dependencies (piper, whisper_timestamped) are not installed.")
@@ -148,10 +158,40 @@ class AudioEngine:
             self._generate_dummy_timestamps(json_path, text)
         else:
             try:
-                # Generate TTS
-                logger.info(f"Synthesizing speech for {block_id}")
-                with wave.open(str(wav_path), 'w') as wav_file:
-                    self.voice.synthesize(text, wav_file)
+                if self.elevenlabs_api_key:
+                    logger.info(f"Synthesizing speech for {block_id} using ElevenLabs")
+                    voice_id = "21m00Tcm4TlvDq8ikWAM" # Rachel
+                    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                    headers = {
+                        "Accept": "audio/mpeg",
+                        "Content-Type": "application/json",
+                        "xi-api-key": self.elevenlabs_api_key
+                    }
+                    data = {
+                        "text": text,
+                        "model_id": "eleven_monolingual_v1",
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.5
+                        }
+                    }
+
+                    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}?output_format=pcm_16000_16_mono"
+                    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers, method='POST')
+                    with urllib.request.urlopen(req) as response:
+                        pcm_data = response.read()
+
+                        with wave.open(str(wav_path), 'wb') as wav_file:
+                            wav_file.setnchannels(1)
+                            wav_file.setsampwidth(2)
+                            wav_file.setframerate(16000)
+                            wav_file.writeframes(pcm_data)
+
+                else:
+                    # Generate TTS
+                    logger.info(f"Synthesizing speech for {block_id}")
+                    with wave.open(str(wav_path), 'w') as wav_file:
+                        self.voice.synthesize(text, wav_file)
 
                 # Extract timestamps using whisper-timestamped
                 logger.info(f"Extracting timestamps for {block_id}")

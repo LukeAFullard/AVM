@@ -21,8 +21,8 @@
     #magazine-image { width: 100%; height: 100%; object-fit: contain; transform-origin: top left; transform: scale(1) translate(0%, 0%); transition: none; }
 
     #captions-layer { position: absolute; bottom: 220px; width: 900px; text-align: center; z-index: 10; line-height: 1.2; }
-    .word { display: inline-block; font-size: 72px; color: #FFFFFF; text-transform: uppercase; margin: 0 6px; text-shadow: 3px 3px 0px #000, -3px -3px 0px #000, 3px -3px 0px #000, -3px 3px 0px #000, 0px 8px 20px rgba(0,0,0,0.9); opacity: 0.4; transform: scale(0.95); transition: none; }
-    .word.active { color: var(--primary-color); opacity: 1.0; text-decoration: underline; text-decoration-color: var(--secondary-color); text-decoration-thickness: 6px; }
+    .word { display: inline-block; font-size: 76px; font-weight: bold; color: #FFFFFF; text-transform: uppercase; margin: 0 8px; text-shadow: 4px 4px 0px #000, -4px -4px 0px #000, 4px -4px 0px #000, -4px 4px 0px #000, 0px 10px 25px rgba(0,0,0,0.9); opacity: 0.4; transform: scale(0.95); transition: none; display: inline-block; }
+    .word.active { color: var(--primary-color); opacity: 1.0; text-shadow: 4px 4px 0px var(--secondary-color), -4px -4px 0px #000, 4px -4px 0px #000, -4px 4px 0px #000, 0px 0px 30px rgba(255,215,0,0.8); }
     .word.past { opacity: 0.9; transform: scale(1.0); }
 
     #progress-bar { position: absolute; bottom: 0; left: 0; height: 8px; background: var(--primary-color); width: 0%; z-index: 20; }
@@ -222,14 +222,19 @@
                 fps: fps,
                 config: { damping: 10, mass: 1, stiffness: 100 }
             });
-            // Map spring progress [0, 1] to scale [0.95, 1.15]
-            const popScale = interpolate(springProgress, [0, 1], [0.95, 1.15], { easing: Easing.linear });
-            w.element.style.transform = `scale(${popScale})`;
+            // Map spring progress [0, 1] to scale [0.95, 1.25] for a more aggressive pop
+            const popScale = interpolate(springProgress, [0, 1], [0.95, 1.25], { easing: Easing.linear });
+
+            // Add subtle rotation
+            const rotationProgress = interpolate(localFrame, [0, 15], [0, 1], { extrapolateRight: 'clamp', easing: Easing.linear });
+            const rotation = interpolate(rotationProgress, [0, 0.5, 1], [0, -3, 0], { easing: Easing.quad });
+
+            w.element.style.transform = `scale(${popScale}) rotate(${rotation}deg)`;
         } else if (isPast) {
             w.element.classList.add('past');
-            w.element.style.transform = `scale(1.0)`;
+            w.element.style.transform = `scale(1.0) rotate(0deg)`;
         } else {
-            w.element.style.transform = `scale(0.95)`;
+            w.element.style.transform = `scale(0.95) rotate(0deg)`;
         }
       }
 
