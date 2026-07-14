@@ -25,11 +25,19 @@ def render_preview():
             {"word": "Preview", "start": 1.1, "end": 1.6},
         ]
 
+    global_style = {
+        "font_family": "Bebas Neue",
+        "primary_color": "#FFD700",
+        "secondary_color": "#FF0055",
+        "animation_easing": "cubic"
+    }
+
     html_content = template.render(
         bbox=bbox,
         image_path="data/workspace/time_1986_page_36/00_source_page.png",
         timestamps=timestamps,
-        duration_sec=2.0
+        duration_sec=2.0,
+        global_style=global_style
     )
 
     html_file = base_dir / "_temp_preview.html"

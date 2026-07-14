@@ -3,6 +3,9 @@ import json
 import subprocess
 import urllib.request
 import urllib.parse
+import wave
+import math
+import struct
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from playwright.sync_api import sync_playwright
@@ -95,6 +98,45 @@ class PlaywrightRenderEngine:
             f.write(html_content)
         return temp_html
 
+    def _generate_sfx_track(self, timestamps: list, duration_sec: float, output_path: Path):
+        """Generates a synchronized pop sound effect track."""
+        sample_rate = 48000
+        n_samples = int(sample_rate * duration_sec)
+        audio_data = [0.0] * n_samples
+
+        for ts in timestamps:
+            start_time = ts.get("start", 0.0)
+            start_sample = int(start_time * sample_rate)
+
+            # Simple "pop" sound: quick sine wave burst with exponential decay
+            pop_duration = 0.05
+            pop_samples = int(pop_duration * sample_rate)
+            pop_freq = 800.0
+
+            for i in range(pop_samples):
+                idx = start_sample + i
+                if idx < n_samples:
+                    t = i / sample_rate
+                    decay = math.exp(-t * 60) # Fast decay
+                    val = 0.15 * math.sin(2.0 * math.pi * pop_freq * t) * decay
+                    audio_data[idx] += val
+
+        with wave.open(str(output_path), 'w') as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+
+            # Pack data
+            packed_data = bytearray()
+            for sample in audio_data:
+                # clamp and convert to 16-bit int
+                clamped = max(-1.0, min(1.0, sample))
+                int_val = int(clamped * 32767)
+                packed_data.extend(struct.pack('<h', int_val))
+
+            wav_file.writeframesraw(packed_data)
+
+
     def render_scene_to_mp4(self, scene_id: str, duration_sec: float):
         with open(self.project_dir / "05_render_manifest.json") as f:
             manifest = json.load(f)
@@ -104,16 +146,24 @@ class PlaywrightRenderEngine:
         temp_html_path = self.build_html_payload(scene_config, timestamps, duration_sec, global_style=manifest.get("global_style"))
 
         audio_path = self.project_dir / "04_audio_payload" / f"narration_{scene_id}.wav"
+        sfx_path = self.project_dir / "04_audio_payload" / f"sfx_pops_{scene_id}.wav"
+
+        # Generate the synchronized sound effects track
+        self._generate_sfx_track(timestamps, duration_sec, sfx_path)
+
         output_mp4 = self.project_dir / "06_exports" / f"{scene_id}.mp4"
         os.makedirs(output_mp4.parent, exist_ok=True)
         total_frames = int(duration_sec * self.fps)
 
         ffmpeg_cmd = [
             "ffmpeg", "-y", "-f", "image2pipe", "-vcodec", "png", "-r", str(self.fps),
-            "-i", "-", "-i", str(audio_path),
-            "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.02",
-            "-f", "lavfi", "-i", "aevalsrc='0.05*sin(2*PI*50*t):s=48000'",
-            "-filter_complex", "[1:a][2:a][3:a]amix=inputs=3:duration=first:dropout_transition=2:weights=1.0 0.5 0.5[a]",
+            "-i", "-",
+            "-i", str(audio_path),
+            "-i", str(sfx_path),
+            "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.015",
+            "-f", "lavfi", "-i", "aevalsrc='0.02*sin(2*PI*50*t):s=48000'",
+            "-f", "lavfi", "-i", "aevalsrc='0.1*sin(2*PI*110*t)+0.05*sin(2*PI*220*t):s=48000',chorus=0.7:0.9:55:0.4:0.25:2",
+            "-filter_complex", "[1:a][2:a][3:a][4:a][5:a]amix=inputs=5:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3[a]",
             "-map", "0:v", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-shortest", str(output_mp4)
         ]

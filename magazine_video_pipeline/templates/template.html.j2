@@ -29,10 +29,16 @@
     #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.8) 150%); pointer-events: none; z-index: 30; }
     #film-grain { position: absolute; inset: 0; background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E'); opacity: 0.15; pointer-events: none; z-index: 90; }
     #fade-overlay { position: absolute; inset: 0; background: black; pointer-events: none; z-index: 100; opacity: 1; }
+
+    /* Branding & CTA */
+    #branding-watermark { position: absolute; top: 40px; right: 40px; font-size: 32px; color: rgba(255, 255, 255, 0.5); z-index: 80; font-family: monospace; letter-spacing: 2px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+    #cta-container { position: absolute; top: 40px; left: 40px; background: #FF0000; color: white; padding: 12px 24px; border-radius: 50px; font-size: 36px; font-weight: bold; z-index: 80; box-shadow: 0px 8px 20px rgba(0,0,0,0.6); transform: scale(0); opacity: 0; transform-origin: left center; }
   </style>
 </head>
 <body>
   <div id="viewport">
+    <div id="branding-watermark">@VintageStories</div>
+    <div id="cta-container">SUBSCRIBE</div>
     <div id="vignette"></div>
     <div id="film-grain"></div>
     <div id="fade-overlay"></div>
@@ -133,6 +139,7 @@
     const progressBar = document.getElementById('progress-bar');
     const fadeOverlay = document.getElementById('fade-overlay');
     const filmGrain = document.getElementById('film-grain');
+    const ctaContainer = document.getElementById('cta-container');
 
     const xmin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--xmin'));
     const ymin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ymin'));
@@ -176,6 +183,23 @@
       // Progress bar using interpolate
       progressBar.style.width = `${interpolate(progress, [0, 1], [0, 100], { easing: Easing.linear })}%`;
 
+      // CTA Pop Animation (appears at 85% progress)
+      if (progress > 0.85) {
+          const ctaProgress = (progress - 0.85) / 0.15; // Normalize to 0-1 over the last 15%
+          // Map to local frames for spring function
+          const ctaLocalFrame = ctaProgress * totalFrames * 0.15;
+          const ctaSpring = spring({
+              frame: ctaLocalFrame,
+              fps: fps,
+              config: { damping: 12, mass: 1, stiffness: 120 }
+          });
+          ctaContainer.style.transform = `scale(${ctaSpring})`;
+          ctaContainer.style.opacity = interpolate(ctaProgress, [0, 0.2], [0, 1], { easing: Easing.linear });
+      } else {
+          ctaContainer.style.transform = `scale(0)`;
+          ctaContainer.style.opacity = 0;
+      }
+
       for (let i = 0; i < words.length; i++) {
         const w = words[i];
         w.element.classList.remove('active', 'past');
@@ -210,11 +234,33 @@
       }
 
       // Dynamic Panning: Smooth continuous pan over the scene duration
-      // Pan max horizontal offset = 10%, vertical = 5%
-      const panTx = interpolate(progress, [0, 1], [0, -10], { easing: Easing.linear });
-      const panTy = interpolate(progress, [0, 1], [0, -5], { easing: Easing.linear });
+      // Mathematically derive a pan direction tracking word progression (like reading)
+      let targetPanTx = -10;
+      let targetPanTy = -5;
 
-      magImage.style.transform = `scale(${currentScale}) translate(${currentTx + panTx}%, ${currentTy + panTy}%)`;
+      // Calculate a pan target based on the currently active or last active word
+      let wordProgress = progress;
+      if (words.length > 0) {
+          // Find currently active word
+          let activeIndex = words.findIndex(w => (frame / fps) >= w.start && (frame / fps) <= w.end);
+          if (activeIndex === -1) {
+              // Find the last word that was active
+              activeIndex = words.findLastIndex(w => (frame / fps) > w.end);
+              if (activeIndex === -1) activeIndex = 0; // fallback before first word
+          }
+
+          wordProgress = activeIndex / Math.max(1, words.length - 1);
+      }
+
+      // Smooth out word progress to pan target using interpolate (pan left as words progress)
+      // Base pan + progressive pan
+      const basePanTx = interpolate(progress, [0, 1], [0, -5], { easing: Easing.linear });
+      const basePanTy = interpolate(progress, [0, 1], [0, -3], { easing: Easing.linear });
+
+      const dynamicPanTx = interpolate(wordProgress, [0, 1], [0, -8], { easing: Easing.out(Easing.quad) });
+      const dynamicPanTy = interpolate(wordProgress, [0, 1], [0, -4], { easing: Easing.out(Easing.quad) });
+
+      magImage.style.transform = `scale(${currentScale}) translate(${currentTx + basePanTx + dynamicPanTx}%, ${currentTy + basePanTy + dynamicPanTy}%)`;
 
       // Dynamic Shadow using interpolate
       const shadowBlur = interpolate(currentScale, [1, targetScale], [50, 50 + (targetScale * 20)], { easing: Easing.linear });
