@@ -49,30 +49,52 @@ class PlaywrightRenderEngine:
 
         if source_type == "external_broll":
             broll_query = visual_source.get("broll_search_query", "")
+            pexels_api_key = os.environ.get("PEXELS_API_KEY")
             if broll_query:
                 try:
                     encoded_query = urllib.parse.quote(broll_query)
-                    url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
-                    req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
-                    with urllib.request.urlopen(req) as response:
-                        data = json.loads(response.read().decode())
-                        pages = data.get("query", {}).get("pages", {})
-                        if pages:
-                            first_page = list(pages.values())[0]
-                            image_info = first_page.get("imageinfo", [])
-                            if image_info:
-                                image_url = image_info[0].get("url")
-                                scene_id = scene_config.get("scene_ref_id", "temp")
-                                temp_broll_path = self.project_dir / f"00_broll_{scene_id}.png"
+                    image_url = None
 
-                                # Use custom user-agent for download too, just in case
-                                download_req = urllib.request.Request(image_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
-                                with urllib.request.urlopen(download_req) as dl_response:
-                                    with open(temp_broll_path, 'wb') as f:
-                                        f.write(dl_response.read())
+                    if pexels_api_key:
+                        try:
+                            url = f"https://api.pexels.com/v1/search?query={encoded_query}&orientation=portrait&per_page=1"
+                            req = urllib.request.Request(url, headers={'Authorization': pexels_api_key})
+                            with urllib.request.urlopen(req) as response:
+                                data = json.loads(response.read().decode())
+                                photos = data.get("photos", [])
+                                if photos:
+                                    image_url = photos[0].get("src", {}).get("large2x") or photos[0].get("src", {}).get("original")
+                        except Exception as e:
+                            print(f"Failed to fetch external broll from Pexels: {e}")
 
-                                image_path = temp_broll_path
-                                bbox = [10.0, 10.0, 90.0, 90.0]
+                    if not image_url:
+                        # Fallback to Wikimedia Commons
+                        try:
+                            url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
+                            req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                            with urllib.request.urlopen(req) as response:
+                                data = json.loads(response.read().decode())
+                                pages = data.get("query", {}).get("pages", {})
+                                if pages:
+                                    first_page = list(pages.values())[0]
+                                    image_info = first_page.get("imageinfo", [])
+                                    if image_info:
+                                        image_url = image_info[0].get("url")
+                        except Exception as e:
+                            print(f"Failed to fetch external broll from Wikimedia Commons: {e}")
+
+                    if image_url:
+                        scene_id = scene_config.get("scene_ref_id", "temp")
+                        temp_broll_path = self.project_dir / f"00_broll_{scene_id}.png"
+
+                        # Use custom user-agent for download too, just in case
+                        download_req = urllib.request.Request(image_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                        with urllib.request.urlopen(download_req) as dl_response:
+                            with open(temp_broll_path, 'wb') as f:
+                                f.write(dl_response.read())
+
+                        image_path = temp_broll_path
+                        bbox = [10.0, 10.0, 90.0, 90.0]
                 except Exception as e:
                     print(f"Failed to fetch external broll for query '{broll_query}': {e}")
                     # Fallback to source page if API fails

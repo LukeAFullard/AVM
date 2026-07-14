@@ -79,6 +79,12 @@ class TestEditorialEngine(unittest.TestCase):
         engine.llm = mock_instance
 
         # Process the specific workspace
+        # Setup dummy missing input files for process_workspace
+        if not self.test_workspace.exists():
+            self.test_workspace.mkdir(parents=True)
+        with open(self.test_workspace / "01_layout_ocr.json", "w") as f:
+            json.dump({}, f)
+
         engine.process_workspace(self.test_workspace)
 
         # Check if files were created
