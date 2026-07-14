@@ -1,0 +1,30 @@
+---
+description: Architectural Rule (Render Engine and CSS/Animations)
+globs: src/render_engine.py, templates/**/*.j2, studio.html
+---
+
+# Rendering Rules
+
+## Remotion-style Mathematical Animations (No CSS Transitions)
+
+Do not use CSS transition or animation properties in templates. Visual motion must be driven mathematically by an injected JavaScript `window.seekToFrame(frame, fps)` function.
+
+The `window.seekToFrame` Javascript function signature must strictly be `window.seekToFrame(frame, fps)` and does not take a `totalFrames` argument. To strictly adhere to this signature constraint without losing context, `duration_sec` is passed from Python (e.g., via `build_html_payload`) into the Jinja template context. This allows the internal JavaScript to calculate `totalFrames` dynamically without needing it as a function parameter.
+
+Remotion-style Javascript utility functions (like `interpolate` with easing/extrapolation options, `clamp`, `spring`, `Sequence`, `random`, and an `Easing` object) are implemented in the `template.html.j2` file to cleanly drive mathematical frame-by-frame animations and timeline scoping (`Sequence`), respecting the constraint against CSS transitions.
+
+## Audio Engine Sound Design
+
+The Render Engine natively implements API-free sound design (e.g., vintage film crackle, projector hum) directly via FFmpeg's `lavfi` (libavfilter) components like `anoisesrc` and `aevalsrc`, seamlessly merged with narration using the `amix` filter.
+
+## Avoid Video Abstraction Libraries
+
+Do not use MoviePy or other video abstraction libraries. Use headless Playwright to stream raw PNG bytes via stdin directly to an FFmpeg subprocess.
+
+## Interactive Preview Studio
+
+The project includes a local Interactive Preview Studio (`preview_studio.py` serving `studio.html`) which utilizes an iframe and a timeline slider to scrub through the `template.html.j2` animations to test visual effects.
+
+## Visual Polish Plan
+
+Professional visual polish features from `VISUAL_POLISH_PLAN.md` (e.g., dynamic panning, custom fonts, caption pops, and global fades) are fully implemented in `template.html.j2`. Do not attempt to re-implement them from scratch.
