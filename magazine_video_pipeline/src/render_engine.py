@@ -60,8 +60,10 @@ class PlaywrightRenderEngine:
 
         ffmpeg_cmd = [
             "ffmpeg", "-y", "-f", "image2pipe", "-vcodec", "png", "-r", str(self.fps),
-            "-i", "-", "-i", str(audio_path), "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.015",
-            "-filter_complex", "[1:a][2:a]amix=inputs=2:duration=first:dropout_transition=2[a]",
+            "-i", "-", "-i", str(audio_path),
+            "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.02",
+            "-f", "lavfi", "-i", "aevalsrc='0.05*sin(2*PI*50*t):s=48000'",
+            "-filter_complex", "[1:a][2:a][3:a]amix=inputs=3:duration=first:dropout_transition=2:weights=1.0 0.5 0.5[a]",
             "-map", "0:v", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p",
             "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-shortest", str(output_mp4)
         ]
