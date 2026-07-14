@@ -1,6 +1,8 @@
 import os
 import json
 import subprocess
+import urllib.request
+import urllib.parse
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from playwright.sync_api import sync_playwright
@@ -35,8 +37,43 @@ class PlaywrightRenderEngine:
 
     def build_html_payload(self, scene_config: dict, timestamps: list, duration_sec: float, global_style: dict = None) -> Path:
         template = self.env.get_template("template.html.j2")
+
+        visual_source = scene_config.get("visual_source", {})
+        source_type = visual_source.get("source_type", "magazine_scan")
+
         image_path = self.project_dir / "00_source_page.png"
-        bbox = scene_config["visual_source"].get("crop_bbox_pct", [0, 0, 100, 100])
+        bbox = visual_source.get("crop_bbox_pct", [0, 0, 100, 100])
+
+        if source_type == "external_broll":
+            broll_query = visual_source.get("broll_search_query", "")
+            if broll_query:
+                try:
+                    encoded_query = urllib.parse.quote(broll_query)
+                    url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
+                    req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                    with urllib.request.urlopen(req) as response:
+                        data = json.loads(response.read().decode())
+                        pages = data.get("query", {}).get("pages", {})
+                        if pages:
+                            first_page = list(pages.values())[0]
+                            image_info = first_page.get("imageinfo", [])
+                            if image_info:
+                                image_url = image_info[0].get("url")
+                                scene_id = scene_config.get("scene_ref_id", "temp")
+                                temp_broll_path = self.project_dir / f"00_broll_{scene_id}.png"
+
+                                # Use custom user-agent for download too, just in case
+                                download_req = urllib.request.Request(image_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                                with urllib.request.urlopen(download_req) as dl_response:
+                                    with open(temp_broll_path, 'wb') as f:
+                                        f.write(dl_response.read())
+
+                                image_path = temp_broll_path
+                                bbox = [10.0, 10.0, 90.0, 90.0]
+                except Exception as e:
+                    print(f"Failed to fetch external broll for query '{broll_query}': {e}")
+                    # Fallback to source page if API fails
+                    pass
 
         if global_style is None:
             global_style = {

@@ -59,7 +59,8 @@ class EditorialEngine:
                     ],
                     "body_scenes": [
                         {"scene_id": "s1", "chronological_order": 1, "spoken_narration": "Dummy body scene narration.", "estimated_duration": 5.0, "narrative_purpose": "context_setup"},
-                        {"scene_id": "s2", "chronological_order": 2, "spoken_narration": "Second dummy body scene.", "estimated_duration": 6.0, "narrative_purpose": "escalation"}
+                        {"scene_id": "s2", "chronological_order": 2, "spoken_narration": "Second dummy body scene.", "estimated_duration": 6.0, "narrative_purpose": "escalation"},
+                        {"scene_id": "s3", "chronological_order": 3, "spoken_narration": "And today, it is still remembered.", "estimated_duration": 4.0, "narrative_purpose": "aftermath"}
                     ]
                 }
             elif schema_title == "VisualRenderManifest":
@@ -79,6 +80,11 @@ class EditorialEngine:
                             "scene_ref_id": "s1", "template_component": "column_drift",
                             "visual_source": {"source_type": "magazine_scan", "target_page_number": 1, "crop_bbox_pct": [20.0, 20.0, 80.0, 80.0], "broll_search_query": ""},
                             "transition_in": "cut", "foley_trigger": "none"
+                        },
+                        {
+                            "scene_ref_id": "s3", "template_component": "headline_zoom",
+                            "visual_source": {"source_type": "external_broll", "target_page_number": 1, "crop_bbox_pct": [10.0, 10.0, 90.0, 90.0], "broll_search_query": "vintage train"},
+                            "transition_in": "fade", "foley_trigger": "none"
                         }
                     ]
                 }
@@ -170,6 +176,7 @@ Provide the evaluation in strict JSON format according to the requested schema.
         prompt = f"""You are an expert story selector and scriptwriter.
 Based on the following topic evaluation from a vintage magazine article, generate a compelling short-form video script.
 Provide exactly 3 distinct hooks and between 2 and 5 body scenes.
+You must include an 'aftermath' scene at the end that acts as a conclusion, explicitly addressing "Where are they now?" or "What happened next?" to link the past historical events to the present day.
 
 Topic Evaluation:
 {json.dumps(topic_data, indent=2)}
@@ -200,6 +207,7 @@ Topic Evaluation:
         prompt = f"""You are an expert visual planner and video editor.
 Translate the following storyboard narratives into visual parameters (crop percentages, components, transitions, foley triggers) for rendering.
 Assign a specific visual style and transition settings to match the mood of the scenes.
+For the final 'aftermath' or modern-day parallel scenes, you must set the visual source type to 'external_broll' and provide a descriptive 'broll_search_query' so the pipeline can fetch a relevant modern or historical stock image.
 
 Storyboard Narrative:
 {json.dumps(storyboard_data, indent=2)}
