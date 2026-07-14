@@ -7,11 +7,15 @@
     "project_id": { "type": "string" },
     "global_style": {
       "type": "object",
-      "required": ["color_palette", "caption_style", "background_texture"],
+      "required": ["color_palette", "caption_style", "background_texture", "font_family", "primary_color", "secondary_color", "animation_easing"],
       "properties": {
         "color_palette": { "type": "string" },
         "caption_style": { "type": "string" },
-        "background_texture": { "type": "string" }
+        "background_texture": { "type": "string" },
+        "font_family": { "type": "string" },
+        "primary_color": { "type": "string" },
+        "secondary_color": { "type": "string" },
+        "animation_easing": { "type": "string", "enum": ["linear", "quad", "cubic", "spring"] }
       }
     },
     "scene_manifests": {

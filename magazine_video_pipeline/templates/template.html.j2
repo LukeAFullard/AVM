@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&family=Oswald:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --xmin: {{ bbox[0] }};
       --ymin: {{ bbox[1] }};
       --xmax: {{ bbox[2] }};
       --ymax: {{ bbox[3] }};
+      --primary-color: {{ global_style.primary_color | default('#FFD700') }};
+      --secondary-color: {{ global_style.secondary_color | default('#FF0055') }};
+      --font-family: '{{ global_style.font_family | default("Bebas Neue") }}', 'Impact', 'Arial Black', sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif; }
+    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: var(--font-family); }
     #viewport { width: 1080px; height: 1920px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 
     .magazine-container { width: 900px; height: 1300px; position: absolute; top: 150px; overflow: hidden; border-radius: 12px; box-shadow: 0px 20px 50px rgba(0,0,0,0.8); border: 2px solid #333; transition: none; }
@@ -19,10 +22,10 @@
 
     #captions-layer { position: absolute; bottom: 220px; width: 900px; text-align: center; z-index: 10; line-height: 1.2; }
     .word { display: inline-block; font-size: 72px; color: #FFFFFF; text-transform: uppercase; margin: 0 6px; text-shadow: 3px 3px 0px #000, -3px -3px 0px #000, 3px -3px 0px #000, -3px 3px 0px #000, 0px 8px 20px rgba(0,0,0,0.9); opacity: 0.4; transform: scale(0.95); transition: none; }
-    .word.active { color: #FFD700; opacity: 1.0; text-decoration: underline; text-decoration-color: #FF0055; text-decoration-thickness: 6px; }
+    .word.active { color: var(--primary-color); opacity: 1.0; text-decoration: underline; text-decoration-color: var(--secondary-color); text-decoration-thickness: 6px; }
     .word.past { opacity: 0.9; transform: scale(1.0); }
 
-    #progress-bar { position: absolute; bottom: 0; left: 0; height: 8px; background: #FFD700; width: 0%; z-index: 20; }
+    #progress-bar { position: absolute; bottom: 0; left: 0; height: 8px; background: var(--primary-color); width: 0%; z-index: 20; }
     #vignette { position: absolute; inset: 0; background: radial-gradient(circle, transparent 50%, rgba(0,0,0,0.8) 150%); pointer-events: none; z-index: 30; }
     #film-grain { position: absolute; inset: 0; background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E'); opacity: 0.15; pointer-events: none; z-index: 90; }
     #fade-overlay { position: absolute; inset: 0; background: black; pointer-events: none; z-index: 100; opacity: 1; }
@@ -146,10 +149,17 @@
       const currentTime = frame / fps;
       const progress = clamp(frame / totalFrames, 0, 1);
 
+      // Get parameterized easing
+      const easingType = '{{ global_style.animation_easing | default("cubic") }}';
+      let easingFunc = Easing.out(Easing.cubic);
+      if (easingType === 'linear') easingFunc = Easing.linear;
+      else if (easingType === 'quad') easingFunc = Easing.out(Easing.quad);
+      else if (easingType === 'spring') easingFunc = (t) => spring({ frame: t * totalFrames, fps: fps, config: { damping: 10, mass: 1, stiffness: 100 }});
+
       // Remotion-style interpolations
-      const currentScale = interpolate(progress, [0, 1], [1, targetScale], { easing: Easing.out(Easing.cubic) });
-      let currentTx = interpolate(progress, [0, 1], [0, targetTranslateX], { easing: Easing.out(Easing.cubic) });
-      let currentTy = interpolate(progress, [0, 1], [0, targetTranslateY], { easing: Easing.out(Easing.cubic) });
+      const currentScale = interpolate(progress, [0, 1], [1, targetScale], { easing: easingFunc });
+      let currentTx = interpolate(progress, [0, 1], [0, targetTranslateX], { easing: easingFunc });
+      let currentTy = interpolate(progress, [0, 1], [0, targetTranslateY], { easing: easingFunc });
 
       // Film grain flickering (math shift)
       filmGrain.style.backgroundPosition = `${random(frame) * 100}px ${random(frame + 1000) * 100}px`;
