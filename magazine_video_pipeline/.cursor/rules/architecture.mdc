@@ -1,18 +1,10 @@
 ---
-description: Architectural Rule (Decoupled Artifact Pattern)
-globs: src/**/*.py, **/*.py
+description: Enforces the core Decoupled Artifact Pattern for the pipeline.
+globs: src/*.py
 ---
+# Architectural Rules
 
-# Decoupled Artifact Pattern
-
-Do not pass large data structures exclusively in memory. Every pipeline stage must read from and write distinct, immutable JSON or media artifacts to disk.
-
-- **Data Ingestion Pipeline:** `src/ingestion_engine.py` extracts raw PDFs into page-specific directories (`data/workspace/{pdf_name}_page_{num}`) producing isolated artifacts like `00_source_page.png` and `01_layout_ocr.json` (normalized bounding boxes).
-- **Editorial Orchestration Pipeline:** `src/editorial_engine.py` orchestrates three sequential LLM agents using strict JSON schemas (enforced via `llama_cpp.LlamaGrammar`): Topic Detector (outputs `02_topic_evaluation.json`), Story Selector (outputs `03_storyboard.json`), and Visual Planner (outputs `05_render_manifest.json`).
-- **Audio Synthesis Pipeline:** `src/audio_engine.py` reads `03_storyboard.json` to synthesize narration using local TTS (`piper-tts`) and extract word-level timestamps using `whisper-timestamped`, outputting `narration_*.wav` files and corresponding `timestamps_*.json` payloads into the `04_audio_payload/` workspace directory.
-
-**Workflow Orchestration & Self-Healing:** `src/main_pipeline.py` is the central CLI orchestrator. It uses `VideoQualityGatekeeper` in a retry loop to catch visual/pacing violations and passes error strings back to `EditorialEngine` (`story_feedback`, `visual_feedback`) to automatically regenerate flawed JSON artifacts.
-
-**Render Engine:** Flatten nested timestamps logic is handled by `RenderEngine.load_artifacts`.
-
-**AI Orchestration:** AI orchestration uses a local instance of Gemma 4 12B Unified accessed via `llama-cpp-python` with strict JSON grammar enforcement.
+- **Decoupled Artifact Pattern:** Do not pass large data structures exclusively in memory. Every pipeline stage must read from and write distinct, immutable JSON or media artifacts to disk.
+- Never commit generated pipeline artifacts (e.g., .wav, .json timestamps, .mp4, or data/workspace/ contents) to version control.
+- **No External APIs:** Avoid external APIs when adding new features or polish to the pipeline. Rely on local processing.
+- AI orchestration uses a local instance of Gemma 4 12B Unified accessed via llama-cpp-python with strict JSON grammar enforcement.
