@@ -33,16 +33,25 @@ class PlaywrightRenderEngine:
         scene_config = next(s for s in manifest["scene_manifests"] if s["scene_ref_id"] == scene_id)
         return scene_config, formatted_ts
 
-    def build_html_payload(self, scene_config: dict, timestamps: list, duration_sec: float) -> Path:
+    def build_html_payload(self, scene_config: dict, timestamps: list, duration_sec: float, global_style: dict = None) -> Path:
         template = self.env.get_template("template.html.j2")
         image_path = self.project_dir / "00_source_page.png"
         bbox = scene_config["visual_source"].get("crop_bbox_pct", [0, 0, 100, 100])
+
+        if global_style is None:
+            global_style = {
+                "font_family": "Bebas Neue",
+                "primary_color": "#FFD700",
+                "secondary_color": "#FF0055",
+                "animation_easing": "cubic"
+            }
 
         html_content = template.render(
             image_path=f"file://{image_path.absolute()}",
             bbox=bbox,
             timestamps=timestamps,
-            duration_sec=duration_sec
+            duration_sec=duration_sec,
+            global_style=global_style
         )
         temp_html = self.project_dir / "temp_render.html"
         with open(temp_html, "w", encoding="utf-8") as f:
@@ -50,8 +59,11 @@ class PlaywrightRenderEngine:
         return temp_html
 
     def render_scene_to_mp4(self, scene_id: str, duration_sec: float):
+        with open(self.project_dir / "05_render_manifest.json") as f:
+            manifest = json.load(f)
+
         scene_config, timestamps = self.load_artifacts(scene_id)
-        temp_html_path = self.build_html_payload(scene_config, timestamps, duration_sec)
+        temp_html_path = self.build_html_payload(scene_config, timestamps, duration_sec, global_style=manifest.get("global_style"))
 
         audio_path = self.project_dir / "04_audio_payload" / f"narration_{scene_id}.wav"
         output_mp4 = self.project_dir / "06_exports" / f"{scene_id}.mp4"

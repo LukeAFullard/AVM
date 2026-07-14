@@ -66,7 +66,8 @@ class EditorialEngine:
                 return {
                     "project_id": "dummy_p1",
                     "global_style": {
-                        "color_palette": "vintage", "caption_style": "bold", "background_texture": "grain"
+                        "color_palette": "vintage", "caption_style": "bold", "background_texture": "grain",
+                        "font_family": "Oswald", "primary_color": "#00FF00", "secondary_color": "#FF00FF", "animation_easing": "quad"
                     },
                     "scene_manifests": [
                         {
