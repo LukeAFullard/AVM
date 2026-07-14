@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --xmin: {{ bbox[0] }};
@@ -11,7 +11,7 @@
       --ymax: {{ bbox[3] }};
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: 'Playfair Display', 'Impact', 'Arial Black', sans-serif; }
+    body { width: 1080px; height: 1920px; overflow: hidden; background-color: #1a1a1a; font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif; }
     #viewport { width: 1080px; height: 1920px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 
     .magazine-container { width: 900px; height: 1300px; position: absolute; top: 150px; overflow: hidden; border-radius: 12px; box-shadow: 0px 20px 50px rgba(0,0,0,0.8); border: 2px solid #333; transition: none; }
@@ -199,7 +199,23 @@
         }
       }
 
-      magImage.style.transform = `scale(${currentScale}) translate(${currentTx}%, ${currentTy}%)`;
+      // Dynamic Panning: Track active word
+      let activeWordIndex = words.findIndex(w => frame >= w.start * fps && frame <= w.end * fps);
+      if (activeWordIndex === -1) {
+          activeWordIndex = words.findIndex(w => frame < w.start * fps);
+      }
+      if (activeWordIndex === -1) activeWordIndex = words.length - 1;
+
+      let panProgress = 0;
+      if (activeWordIndex >= 0 && words.length > 0) {
+          panProgress = activeWordIndex / words.length;
+      }
+      // Pan translation (minor horizontal shift tracking text progress)
+      // Pan max horizontal offset = 10%
+      const panTx = interpolate(panProgress, [0, 1], [0, -10], { easing: Easing.linear });
+      const panTy = interpolate(panProgress, [0, 1], [0, -5], { easing: Easing.linear });
+
+      magImage.style.transform = `scale(${currentScale}) translate(${currentTx + panTx}%, ${currentTy + panTy}%)`;
 
       // Dynamic Shadow using interpolate
       const shadowBlur = interpolate(currentScale, [1, targetScale], [50, 50 + (targetScale * 20)], { easing: Easing.linear });
