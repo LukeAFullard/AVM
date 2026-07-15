@@ -65,9 +65,10 @@ def generate_example():
             {
                 "scene_ref_id": "example_5s",
                 "template_component": "headline_zoom",
-                "visual_source": {"source_type": "magazine_scan", "target_page_number": 1, "crop_bbox_pct": [10.0, 10.0, 50.0, 50.0]},
+                "visual_source": {"source_type": "external_broll", "target_page_number": 1, "crop_bbox_pct": [10.0, 10.0, 50.0, 50.0]},
                 "transition_in": "fade",
-                "foley_trigger": "none"
+                "foley_trigger": "none",
+                "highlight_words": ["sound", "design"]
             }
         ]
     }

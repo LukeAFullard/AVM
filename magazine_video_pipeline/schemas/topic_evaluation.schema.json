@@ -2,12 +2,14 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TopicEvaluationResult",
   "type": "object",
-  "required": ["article_id", "headline", "summary", "target_block_ids", "scores"],
+  "required": ["article_id", "headline", "summary", "target_block_ids", "scores", "key_entities", "key_quotes"],
   "properties": {
     "article_id": { "type": "string" },
     "headline": { "type": "string" },
     "summary": { "type": "string" },
     "target_block_ids": { "type": "array", "items": { "type": "string" } },
+    "key_entities": { "type": "array", "items": { "type": "string" } },
+    "key_quotes": { "type": "array", "items": { "type": "string" } },
     "scores": {
       "type": "object",
       "required": ["novelty", "historical_value", "humor", "controversy", "surprise", "visual_quality", "overall_estimate"],

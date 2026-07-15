@@ -18,11 +18,14 @@
     #viewport { width: 1080px; height: 1920px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 
     .magazine-container { width: 900px; height: 1300px; position: absolute; top: 150px; overflow: hidden; border-radius: 12px; box-shadow: 0px 20px 50px rgba(0,0,0,0.8); border: 2px solid #333; transition: none; }
+    .magazine-container.polaroid-style { width: 850px; height: 1000px; top: 200px; border: 30px solid white; border-bottom: 120px solid white; box-shadow: 20px 20px 60px rgba(0,0,0,0.9); transform: rotate(-2deg); overflow: hidden; border-radius: 0; background-color: #222; }
     #magazine-media { width: 100%; height: 100%; object-fit: contain; transform-origin: top left; transform: scale(1) translate(0%, 0%); transition: none; }
+    .polaroid-style #magazine-media { object-fit: cover; }
 
     #captions-layer { position: absolute; bottom: 220px; width: 900px; text-align: center; z-index: 10; line-height: 1.2; }
     .word { display: inline-block; font-size: 76px; font-weight: bold; color: #FFFFFF; text-transform: uppercase; margin: 0 8px; text-shadow: 4px 4px 0px #000, -4px -4px 0px #000, 4px -4px 0px #000, -4px 4px 0px #000, 0px 10px 25px rgba(0,0,0,0.9); opacity: 0.4; transform: scale(0.95); transition: none; display: inline-block; }
     .word.active { color: var(--primary-color); opacity: 1.0; text-shadow: 4px 4px 0px var(--secondary-color), -4px -4px 0px #000, 4px -4px 0px #000, -4px 4px 0px #000, 0px 0px 30px rgba(255,215,0,0.8); }
+    .word.active.word-highlight { color: #39E508; text-shadow: 4px 4px 0px #000, -4px -4px 0px #000, 4px -4px 0px #000, -4px 4px 0px #000, 0px 0px 30px rgba(57,229,8,0.8); }
     .word.past { opacity: 0.9; transform: scale(1.0); }
 
     #progress-bar { position: absolute; bottom: 0; left: 0; height: 8px; background: var(--primary-color); width: 0%; z-index: 20; }
@@ -43,7 +46,7 @@
     <div id="film-grain"></div>
     <div id="fade-overlay"></div>
     <div id="progress-bar"></div>
-    <div class="magazine-container" id="mag-container">
+    <div class="magazine-container{% if source_type == 'external_broll' %} polaroid-style{% endif %}" id="mag-container">
       {% if media_type == 'video' %}
         <video id="magazine-media" src="{{ image_path }}" muted playsinline></video>
       {% else %}
@@ -52,7 +55,9 @@
     </div>
     <div id="captions-layer">
       {% for item in timestamps %}
-        <span class="word" data-start="{{ item.start }}" data-end="{{ item.end }}">{{ item.word }}</span>
+        {% set clean_word = item.word | replace(",", "") | replace(".", "") | replace("!", "") | replace("?", "") | lower %}
+        {% set is_highlight = clean_word in highlight_words|default([]) %}
+        <span class="word{% if is_highlight %} word-highlight{% endif %}" data-start="{{ item.start }}" data-end="{{ item.end }}">{{ item.word }}</span>
       {% endfor %}
     </div>
   </div>

@@ -33,7 +33,9 @@
           "chronological_order": { "type": "integer" },
           "spoken_narration": { "type": "string" },
           "estimated_duration": { "type": "number", "minimum": 2.0, "maximum": 12.0 },
-          "narrative_purpose": { "type": "string", "enum": ["context_setup", "escalation", "twist_climax", "aftermath"] }
+          "narrative_purpose": { "type": "string", "enum": ["context_setup", "escalation", "twist_climax", "aftermath"] },
+          "key_entity_focus": { "type": "string" },
+          "visual_focus_keyword": { "type": "string" }
         }
       }
     }

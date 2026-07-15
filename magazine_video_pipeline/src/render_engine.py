@@ -45,6 +45,7 @@ class PlaywrightRenderEngine:
         template = self.env.get_template("template.html.j2")
 
         visual_source = scene_config.get("visual_source", {})
+        highlight_words = [w.lower() for w in scene_config.get("highlight_words", [])]
         source_type = visual_source.get("source_type", "magazine_scan")
 
         image_path = self.project_dir / "00_source_page.png"
@@ -142,7 +143,9 @@ class PlaywrightRenderEngine:
             bbox=bbox,
             timestamps=timestamps,
             duration_sec=duration_sec,
-            global_style=global_style
+            global_style=global_style,
+            highlight_words=highlight_words,
+            source_type=source_type
         )
         temp_html = self.project_dir / "temp_render.html"
         with open(temp_html, "w", encoding="utf-8") as f:
