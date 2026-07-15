@@ -217,9 +217,9 @@ Topic Evaluation:
         prompt = f"""You are an expert visual planner and video editor.
 Translate the following storyboard narratives into visual parameters (crop percentages, components, transitions, foley triggers) for rendering.
 Assign a specific visual style and transition settings to match the mood of the scenes.
-For the final 'aftermath' or modern-day parallel scenes, you must set the visual source type to 'external_broll' and provide a descriptive 'broll_search_query' so the pipeline can fetch a relevant modern or historical stock image.
+For the final 'aftermath' or modern-day parallel scenes, you must set the visual source type to 'external_broll' and provide a highly descriptive, cinematic 'broll_search_query' (e.g., "frantic 1920s wall street trading floor" instead of "money") so the pipeline can fetch a relevant, emotionally resonant stock video or image.
 
-Additionally, for any scene that has a 'key_entity_focus', you should strongly consider using 'external_broll' to find a relevant image of that person or place, using that entity in the 'broll_search_query'.
+Additionally, for any scene that has a 'key_entity_focus', you should strongly consider using 'external_broll' to find a relevant image of that person or place, using that entity in a highly specific 'broll_search_query'. The B-roll query must be professional and visually engaging.
 You must also provide an array of 'highlight_words' (e.g. ['money', 'danger', 'secret']) that appear in the spoken narration to be semantically highlighted in the video captions for increased engagement.
 
 Storyboard Narrative:
