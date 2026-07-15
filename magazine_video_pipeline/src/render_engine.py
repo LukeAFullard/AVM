@@ -13,9 +13,10 @@ from midiutil import MIDIFile
 from playwright.sync_api import sync_playwright
 
 class PlaywrightRenderEngine:
-    def __init__(self, project_dir: str, fps: int = 60):
+    def __init__(self, project_dir: str, fps: int = 60, bgm_path: str = None):
         self.project_dir = Path(project_dir)
         self.fps = fps
+        self.bgm_path = bgm_path
         # Assumes this script is run from project root, templates are in ../templates
         self.env = Environment(loader=FileSystemLoader(searchpath=str(self.project_dir.parent.parent.parent / "templates")))
 
@@ -49,28 +50,52 @@ class PlaywrightRenderEngine:
         image_path = self.project_dir / "00_source_page.png"
         bbox = visual_source.get("crop_bbox_pct", [0, 0, 100, 100])
 
+        media_type = "image"
+
         if source_type == "external_broll":
             broll_query = visual_source.get("broll_search_query", "")
             pexels_api_key = os.environ.get("PEXELS_API_KEY")
             if broll_query:
                 try:
                     encoded_query = urllib.parse.quote(broll_query)
-                    image_url = None
+                    media_url = None
+                    downloaded_ext = "png"
 
                     if pexels_api_key:
+                        # 1. Try to fetch video first
                         try:
-                            url = f"https://api.pexels.com/v1/search?query={encoded_query}&orientation=portrait&per_page=1"
+                            url = f"https://api.pexels.com/videos/search?query={encoded_query}&orientation=portrait&per_page=1"
                             req = urllib.request.Request(url, headers={'Authorization': pexels_api_key})
                             with urllib.request.urlopen(req) as response:
                                 data = json.loads(response.read().decode())
-                                photos = data.get("photos", [])
-                                if photos:
-                                    image_url = photos[0].get("src", {}).get("large2x") or photos[0].get("src", {}).get("original")
+                                videos = data.get("videos", [])
+                                if videos:
+                                    video_files = videos[0].get("video_files", [])
+                                    if video_files:
+                                        # Prefer hd or higher quality
+                                        best_video = max(video_files, key=lambda v: (v.get("width", 0) * v.get("height", 0)))
+                                        media_url = best_video.get("link")
+                                        if media_url:
+                                            media_type = "video"
+                                            downloaded_ext = "mp4"
                         except Exception as e:
-                            print(f"Failed to fetch external broll from Pexels: {e}")
+                            print(f"Failed to fetch external video broll from Pexels: {e}")
 
-                    if not image_url:
-                        # Fallback to Wikimedia Commons
+                        # 2. Fallback to image from Pexels
+                        if not media_url:
+                            try:
+                                url = f"https://api.pexels.com/v1/search?query={encoded_query}&orientation=portrait&per_page=1"
+                                req = urllib.request.Request(url, headers={'Authorization': pexels_api_key})
+                                with urllib.request.urlopen(req) as response:
+                                    data = json.loads(response.read().decode())
+                                    photos = data.get("photos", [])
+                                    if photos:
+                                        media_url = photos[0].get("src", {}).get("large2x") or photos[0].get("src", {}).get("original")
+                            except Exception as e:
+                                print(f"Failed to fetch external image broll from Pexels: {e}")
+
+                    if not media_url:
+                        # Fallback to Wikimedia Commons (images only)
                         try:
                             url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
                             req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
@@ -81,16 +106,16 @@ class PlaywrightRenderEngine:
                                     first_page = list(pages.values())[0]
                                     image_info = first_page.get("imageinfo", [])
                                     if image_info:
-                                        image_url = image_info[0].get("url")
+                                        media_url = image_info[0].get("url")
                         except Exception as e:
                             print(f"Failed to fetch external broll from Wikimedia Commons: {e}")
 
-                    if image_url:
+                    if media_url:
                         scene_id = scene_config.get("scene_ref_id", "temp")
-                        temp_broll_path = self.project_dir / f"00_broll_{scene_id}.png"
+                        temp_broll_path = self.project_dir / f"00_broll_{scene_id}.{downloaded_ext}"
 
                         # Use custom user-agent for download too, just in case
-                        download_req = urllib.request.Request(image_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                        download_req = urllib.request.Request(media_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
                         with urllib.request.urlopen(download_req) as dl_response:
                             with open(temp_broll_path, 'wb') as f:
                                 f.write(dl_response.read())
@@ -112,6 +137,7 @@ class PlaywrightRenderEngine:
 
         html_content = template.render(
             image_path=f"file://{image_path.absolute()}",
+            media_type=media_type,
             bbox=bbox,
             timestamps=timestamps,
             duration_sec=duration_sec,
@@ -248,6 +274,7 @@ class PlaywrightRenderEngine:
 
         # Pass 2: Mux Audio into MP4
         print(f"\n[{scene_id}] Pass 2: Muxing Audio...")
+
         ffmpeg_cmd_mux = [
             "ffmpeg", "-y", "-loglevel", "error",
             "-i", str(temp_video_mkv),
@@ -255,10 +282,20 @@ class PlaywrightRenderEngine:
             "-i", str(sfx_path),
             "-t", str(duration_sec), "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.015",
             "-t", str(duration_sec), "-f", "lavfi", "-i", "aevalsrc='0.02*sin(2*PI*50*t):s=48000'",
-            "-t", str(duration_sec), "-f", "lavfi", "-i", "aevalsrc='0.1*sin(2*PI*110*t)+0.05*sin(2*PI*220*t):s=48000',chorus=0.7:0.9:55:0.4:0.25:2",
-            "-filter_complex", "[1:a][2:a][3:a][4:a][5:a]amix=inputs=5:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3[a]",
-            "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output_mp4)
+            "-t", str(duration_sec), "-f", "lavfi", "-i", "aevalsrc='0.1*sin(2*PI*110*t)+0.05*sin(2*PI*220*t):s=48000',chorus=0.7:0.9:55:0.4:0.25:2"
         ]
+
+        if self.bgm_path and os.path.exists(self.bgm_path):
+            ffmpeg_cmd_mux.extend(["-stream_loop", "-1", "-i", self.bgm_path])
+            ffmpeg_cmd_mux.extend([
+                "-filter_complex", "[1:a][2:a][3:a][4:a][5:a][6:a]amix=inputs=6:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3 0.15[a]",
+                "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output_mp4)
+            ])
+        else:
+            ffmpeg_cmd_mux.extend([
+                "-filter_complex", "[1:a][2:a][3:a][4:a][5:a]amix=inputs=5:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3[a]",
+                "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output_mp4)
+            ])
 
         subprocess.run(ffmpeg_cmd_mux, stdout=subprocess.DEVNULL, stderr=None)
         if temp_video_mkv.exists(): os.remove(temp_video_mkv)
