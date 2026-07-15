@@ -209,24 +209,21 @@ class PlaywrightRenderEngine:
         self._generate_sfx_track(timestamps, duration_sec, sfx_path)
 
         output_mp4 = self.project_dir / "06_exports" / f"{scene_id}.mp4"
+        temp_video_mkv = self.project_dir / "06_exports" / f"temp_{scene_id}_video.mkv"
         os.makedirs(output_mp4.parent, exist_ok=True)
         total_frames = int(duration_sec * self.fps)
 
-        ffmpeg_cmd = [
-            "ffmpeg", "-y", "-f", "image2pipe", "-vcodec", "png", "-r", str(self.fps),
+        # Pass 1: Render video only to MKV (immune to missing moov atoms if piped)
+        ffmpeg_cmd_video = [
+            "ffmpeg", "-y", "-loglevel", "error", "-f", "image2pipe", "-vcodec", "png", "-r", str(self.fps),
             "-i", "-",
-            "-i", str(audio_path),
-            "-i", str(sfx_path),
-            "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.015",
-            "-f", "lavfi", "-i", "aevalsrc='0.02*sin(2*PI*50*t):s=48000'",
-            "-f", "lavfi", "-i", "aevalsrc='0.1*sin(2*PI*110*t)+0.05*sin(2*PI*220*t):s=48000',chorus=0.7:0.9:55:0.4:0.25:2",
-            "-filter_complex", "[1:a][2:a][3:a][4:a][5:a]amix=inputs=5:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3[a]",
-            "-map", "0:v", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-preset", "fast", "-crf", "18", "-c:a", "aac", "-b:a", "192k", "-shortest", str(output_mp4)
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "fast", "-crf", "18",
+            "-frames:v", str(total_frames),
+            str(temp_video_mkv)
         ]
 
-        print(f"[{scene_id}] Launching FFmpeg and Playwright ({total_frames} frames @ {self.fps} FPS)...")
-        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None)
+        print(f"[{scene_id}] Pass 1: Launching FFmpeg and Playwright ({total_frames} frames @ {self.fps} FPS)...")
+        ffmpeg_proc = subprocess.Popen(ffmpeg_cmd_video, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None)
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
@@ -240,7 +237,6 @@ class PlaywrightRenderEngine:
                     try:
                         ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
                     except BrokenPipeError:
-                        # ffmpeg gracefully finished processing frames due to -shortest flag
                         break
 
                     if frame % 30 == 0:
@@ -250,5 +246,23 @@ class PlaywrightRenderEngine:
                 if temp_html_path.exists(): os.remove(temp_html_path)
 
         ffmpeg_proc.stdin.close()
-        ffmpeg_proc.wait()
-        print(f"\n[{scene_id}] Render complete -> {output_mp4}")
+        ffmpeg_proc.communicate()
+
+        # Pass 2: Mux Audio into MP4
+        print(f"\n[{scene_id}] Pass 2: Muxing Audio...")
+        ffmpeg_cmd_mux = [
+            "ffmpeg", "-y", "-loglevel", "error",
+            "-i", str(temp_video_mkv),
+            "-i", str(audio_path),
+            "-i", str(sfx_path),
+            "-t", str(duration_sec), "-f", "lavfi", "-i", "anoisesrc=c=pink:r=48000:a=0.015",
+            "-t", str(duration_sec), "-f", "lavfi", "-i", "aevalsrc='0.02*sin(2*PI*50*t):s=48000'",
+            "-t", str(duration_sec), "-f", "lavfi", "-i", "aevalsrc='0.1*sin(2*PI*110*t)+0.05*sin(2*PI*220*t):s=48000',chorus=0.7:0.9:55:0.4:0.25:2",
+            "-filter_complex", "[1:a][2:a][3:a][4:a][5:a]amix=inputs=5:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3[a]",
+            "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output_mp4)
+        ]
+
+        subprocess.run(ffmpeg_cmd_mux, stdout=subprocess.DEVNULL, stderr=None)
+        if temp_video_mkv.exists(): os.remove(temp_video_mkv)
+
+        print(f"[{scene_id}] Render complete -> {output_mp4}")
