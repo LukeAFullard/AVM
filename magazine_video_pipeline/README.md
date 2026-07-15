@@ -34,7 +34,55 @@ PYTHONPATH=. python src/main_pipeline.py --pdf_path <path_to_pdf> --model_path d
 ```
 
 ## Setup
-Run the included setup script to install system dependencies and python packages:
+
+### 1. System Dependencies
+You need to install the core system dependencies required for video rendering, optical character recognition, and audio synthesis:
+
+**Ubuntu/Debian:**
 ```bash
-./setup.sh
+sudo apt-get update
+sudo apt-get install -y ffmpeg poppler-utils tesseract-ocr fluidsynth fluid-soundfont-gm
 ```
+**macOS:**
+```bash
+brew install ffmpeg poppler tesseract fluidsynth fluid-synth
+```
+
+### 2. Python Environment Setup
+Install the required Python packages. It is highly recommended to use a virtual environment:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Playwright Setup
+The rendering engine uses Playwright (Chromium) to stream HTML5 canvas animations directly to FFmpeg. You must install the Playwright browsers:
+```bash
+playwright install chromium
+playwright install-deps chromium
+```
+
+### 4. API Keys & Local B-Roll (Optional)
+To enable high-quality TTS and dynamic external B-roll, set your API keys in your environment variables:
+```bash
+export ELEVENLABS_API_KEY="your_elevenlabs_key"  # For premium AI voices
+export PEXELS_API_KEY="your_pexels_key"          # For high-quality vertical B-roll videos
+```
+*(If these are not provided, the pipeline gracefully falls back to local `piper-tts` and free Wikimedia Commons images).*
+
+**Completely Offline B-Roll (No API):**
+If you do not want to use any external APIs (even free ones like Wikimedia), you can create a folder named `local_broll` in the root of the project directory (`magazine_video_pipeline/data/local_broll`). Drop any `.mp4`, `.jpg`, or `.png` stock files into this folder. If the pipeline attempts to fetch `external_broll` and APIs fail or are disabled, it will automatically fall back to randomly selecting media from this local directory.
+
+## Testing Specific Components
+
+*   **Visual Editor/Preview Studio:** To tweak the HTML template (`templates/template.html.j2`) and preview the kinetic typography animations in real-time before rendering a full video, run:
+    ```bash
+    python preview_studio.py
+    ```
+    *(This will start a local server on `http://localhost:5000`)*
+*   **Fast Render Test:** To quickly test rendering a 5-second mock scene without running the entire LLM pipeline:
+    ```bash
+    PYTHONPATH=. python generate_example.py
+    ```
+    *(The output will be saved as `example_5s.mp4`)*
