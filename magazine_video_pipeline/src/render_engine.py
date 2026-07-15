@@ -201,6 +201,7 @@ class PlaywrightRenderEngine:
         ]
 
         print(f"[{scene_id}] Pass 1: Launching FFmpeg and Playwright ({total_frames} frames @ {self.fps} FPS)...")
+        # We don't pipe stderr to avoid blocking if the buffer fills up since we use communicate at the very end
         ffmpeg_proc = subprocess.Popen(ffmpeg_cmd_video, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None)
 
         with sync_playwright() as p:
@@ -213,8 +214,21 @@ class PlaywrightRenderEngine:
                 for frame in range(total_frames):
                     page.evaluate(f"window.seekToFrame({frame}, {self.fps})")
                     try:
-                        ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
+                        png_bytes = page.screenshot(type="png", omit_background=False)
+                        if ffmpeg_proc.poll() is not None:
+                            break
+                        ffmpeg_proc.stdin.write(png_bytes)
+                        # Remove flush, or ignore flush error
+                        try:
+                            ffmpeg_proc.stdin.flush()
+                        except Exception:
+                            pass
                     except BrokenPipeError:
+                        break
+                    except Exception as e:
+                        if "closed file" in str(e):
+                            break
+                        print(f"Failed to stream frame {frame}: {e}")
                         break
 
                     if frame % 30 == 0:
@@ -223,8 +237,14 @@ class PlaywrightRenderEngine:
                 browser.close()
                 if temp_html_path.exists(): os.remove(temp_html_path)
 
-        ffmpeg_proc.stdin.close()
+        try:
+            ffmpeg_proc.stdin.close()
+        except Exception:
+            pass
+
         ffmpeg_proc.communicate()
+        if ffmpeg_proc.returncode != 0:
+            print(f"FFmpeg Pass 1 failed with return code {ffmpeg_proc.returncode}")
 
         # Pass 2: Mux Audio into MP4
         print(f"\n[{scene_id}] Pass 2: Muxing Audio...")
