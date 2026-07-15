@@ -7,3 +7,4 @@ Pillow
 piper-tts
 whisper-timestamped
 openai-whisper
+MIDIUtil
