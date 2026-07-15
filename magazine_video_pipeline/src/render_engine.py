@@ -97,7 +97,8 @@ class PlaywrightRenderEngine:
                     if not media_url:
                         # Fallback to Wikimedia Commons (images only)
                         try:
-                            url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
+                            # Enforce Public Domain / CC0 for legal monetization without complex attribution
+                            url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}%20incategory:%22Public_domain%22&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
                             req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
                             with urllib.request.urlopen(req) as response:
                                 data = json.loads(response.read().decode())
