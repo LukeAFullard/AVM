@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--model_path", type=str, default="dummy", help="Path to the local LLM model (e.g., Gemma 4 12B GGUF)")
     parser.add_argument("--voice_model", type=str, default="dummy", help="Path to Piper voice model (.onnx), or 'dummy'")
     parser.add_argument("--workspace_dir", type=str, default="data/workspace", help="Directory for output workspaces")
+    parser.add_argument("--bgm_path", type=str, default=None, help="Path to background music file (mp3/wav)")
 
     args = parser.parse_args()
 
@@ -112,7 +113,7 @@ def main():
                 logger.info(f"Quality gatekeeper passed for {workspace}")
 
                 # Render the scenes
-                render_engine = PlaywrightRenderEngine(project_dir=str(workspace))
+                render_engine = PlaywrightRenderEngine(project_dir=str(workspace), bgm_path=args.bgm_path)
                 for scene_manifest in render_manifest.get("scene_manifests", []):
                     scene_id = scene_manifest["scene_ref_id"]
                     timestamps = whisper_timestamps.get(scene_id, [])
