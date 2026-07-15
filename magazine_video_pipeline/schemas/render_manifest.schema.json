@@ -37,7 +37,8 @@
             }
           },
           "transition_in": { "type": "string" },
-          "foley_trigger": { "type": "string", "enum": ["none", "paper_swoosh", "camera_shutter", "vinyl_crackle", "impact_hit"] }
+          "foley_trigger": { "type": "string", "enum": ["none", "paper_swoosh", "camera_shutter", "vinyl_crackle", "impact_hit"] },
+          "highlight_words": { "type": "array", "items": { "type": "string" } }
         }
       }
     }

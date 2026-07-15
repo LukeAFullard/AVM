@@ -149,6 +149,7 @@ class EditorialEngine:
         prompt = f"""You are an expert editorial topic detector for a vintage magazine video pipeline.
 Analyze the following OCR layout data from a vintage magazine page and identify the most compelling high-value story.
 Score it based on novelty, historical value, humor, controversy, surprise, and visual quality.
+You must also extract a list of 'key_entities' (names of important people, organizations, or places) and 'key_quotes' (exact interesting phrases or quotes).
 
 OCR Layout Data:
 {json.dumps(layout_data, indent=2)}
@@ -185,6 +186,7 @@ The spoken narration for each hook MUST be punchy, curiosity-inducing, and under
 
 Provide exactly 3 distinct hooks and between 2 and 5 body scenes.
 You must include an 'aftermath' scene at the end that acts as a conclusion, explicitly addressing "Where are they now?" or "What happened next?" to link the past historical events to the present day.
+Use the extracted 'key_entities' and 'key_quotes' to drive the script. For body scenes involving a specific entity (like a person), you should specify a 'key_entity_focus' and a 'visual_focus_keyword' to guide the visual editor.
 
 Topic Evaluation:
 {json.dumps(topic_data, indent=2)}
@@ -216,6 +218,9 @@ Topic Evaluation:
 Translate the following storyboard narratives into visual parameters (crop percentages, components, transitions, foley triggers) for rendering.
 Assign a specific visual style and transition settings to match the mood of the scenes.
 For the final 'aftermath' or modern-day parallel scenes, you must set the visual source type to 'external_broll' and provide a descriptive 'broll_search_query' so the pipeline can fetch a relevant modern or historical stock image.
+
+Additionally, for any scene that has a 'key_entity_focus', you should strongly consider using 'external_broll' to find a relevant image of that person or place, using that entity in the 'broll_search_query'.
+You must also provide an array of 'highlight_words' (e.g. ['money', 'danger', 'secret']) that appear in the spoken narration to be semantically highlighted in the video captions for increased engagement.
 
 Storyboard Narrative:
 {json.dumps(storyboard_data, indent=2)}
