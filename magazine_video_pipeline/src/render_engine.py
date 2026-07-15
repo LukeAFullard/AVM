@@ -9,6 +9,7 @@ import struct
 import random
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
+from midiutil import MIDIFile
 from playwright.sync_api import sync_playwright
 
 class PlaywrightRenderEngine:
@@ -122,76 +123,53 @@ class PlaywrightRenderEngine:
         return temp_html
 
     def _generate_sfx_track(self, timestamps: list, duration_sec: float, output_path: Path):
-        """Generates advanced cinematic SFX programmatically."""
-        sample_rate = 48000
-        n_samples = int(sample_rate * duration_sec)
-        audio_data = [0.0] * n_samples
+        """Generates advanced cinematic SFX using MIDI & FluidSynth."""
+        track = 0
+        time = 0
+        tempo = 120
 
-        def mix_sound(start_sample, sound_data):
-            for i, val in enumerate(sound_data):
-                idx = start_sample + i
-                if idx < n_samples:
-                    audio_data[idx] += val
+        MyMIDI = MIDIFile(1)
+        MyMIDI.addTempo(track, time, tempo)
 
-        # 1. Generate a cinematic impact at the start of the scene (T=0)
-        impact_dur = 1.0
-        impact_samples = int(impact_dur * sample_rate)
-        impact_data = []
-        for i in range(impact_samples):
-            t = i / sample_rate
-            # Sub bass drop (pitch sweep from 150hz down to 40hz)
-            freq = 150 * math.exp(-t * 5)
-            sub = 0.6 * math.sin(2.0 * math.pi * freq * t)
-            # Noise burst
-            noise = (random.random() * 2 - 1) * 0.3 * math.exp(-t * 15)
-            # Overall envelope
-            envelope = math.exp(-t * 3)
-            impact_data.append((sub + noise) * envelope)
-        mix_sound(0, impact_data)
+        # Setup channels/instruments (Program Change)
+        MyMIDI.addProgramChange(track, 0, 0, 48) # Strings (drone)
+        MyMIDI.addProgramChange(track, 1, 0, 47) # Timpani (impact)
+        MyMIDI.addProgramChange(track, 2, 0, 115) # Woodblock (word ticks)
+        MyMIDI.addProgramChange(track, 3, 0, 119) # Reverse Cymbal (whoosh approximation)
 
-        # 2. Generate a transition whoosh at the start of the scene (T=0)
-        whoosh_dur = 0.8
-        whoosh_samples = int(whoosh_dur * sample_rate)
-        whoosh_data = []
-        for i in range(whoosh_samples):
-            t = i / sample_rate
-            # White noise filtered by an envelope that swells then decays
-            noise = (random.random() * 2 - 1)
-            envelope = (math.sin(t * math.pi / whoosh_dur)) ** 3
-            whoosh_data.append(noise * envelope * 0.15)
-        mix_sound(0, whoosh_data)
+        # 1. Cinematic Impact (Timpani) at T=0
+        MyMIDI.addNote(track, 1, 36, 0, 2, 110)
 
-        # 3. Generate UI ticks for each word
+        # 2. Transition Whoosh (Reverse Cymbal) at T=0
+        MyMIDI.addNote(track, 3, 49, 0, 1, 90)
+
+        # Drone (Low Strings) for entire duration
+        duration_beats = duration_sec * (tempo / 60.0)
+        MyMIDI.addNote(track, 0, 36, 0, duration_beats, 70)
+        MyMIDI.addNote(track, 0, 43, 0, duration_beats, 70)
+
+        # 3. UI ticks for each word
         for ts in timestamps:
             start_time = ts.get("start", 0.0)
-            start_sample = int(start_time * sample_rate)
+            beat = start_time * (tempo / 60.0)
+            MyMIDI.addNote(track, 2, 60, beat, 0.25, 90)
 
-            tick_dur = 0.02
-            tick_samples = int(tick_dur * sample_rate)
-            tick_data = []
-            for i in range(tick_samples):
-                t = i / sample_rate
-                # High frequency click
-                freq = 2500
-                decay = math.exp(-t * 300)
-                val = 0.08 * math.sin(2.0 * math.pi * freq * t) * decay
-                tick_data.append(val)
-            mix_sound(start_sample, tick_data)
+        temp_midi = output_path.with_suffix(".mid")
+        with open(temp_midi, "wb") as output_file:
+            MyMIDI.writeFile(output_file)
 
-        with wave.open(str(output_path), 'w') as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(sample_rate)
+        # Render MIDI to WAV using FluidSynth
+        sf2_path = "/usr/share/sounds/sf2/FluidR3_GM.sf2"
+        try:
+            subprocess.run([
+                "fluidsynth", "-ni", sf2_path, str(temp_midi),
+                "-F", str(output_path), "-r", "48000"
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to render MIDI to WAV: {e}")
+            raise e
 
-            # Pack data (with soft clipping)
-            packed_data = bytearray()
-            for sample in audio_data:
-                # Soft clipping tanh approximation for warmth
-                clamped = math.tanh(sample)
-                int_val = int(clamped * 32767)
-                packed_data.extend(struct.pack('<h', int_val))
-
-            wav_file.writeframesraw(packed_data)
+        temp_midi.unlink(missing_ok=True)
 
 
     def render_scene_to_mp4(self, scene_id: str, duration_sec: float):
@@ -223,6 +201,7 @@ class PlaywrightRenderEngine:
         ]
 
         print(f"[{scene_id}] Pass 1: Launching FFmpeg and Playwright ({total_frames} frames @ {self.fps} FPS)...")
+        # We don't pipe stderr to avoid blocking if the buffer fills up since we use communicate at the very end
         ffmpeg_proc = subprocess.Popen(ffmpeg_cmd_video, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=None)
 
         with sync_playwright() as p:
@@ -235,8 +214,21 @@ class PlaywrightRenderEngine:
                 for frame in range(total_frames):
                     page.evaluate(f"window.seekToFrame({frame}, {self.fps})")
                     try:
-                        ffmpeg_proc.stdin.write(page.screenshot(type="png", omit_background=False))
+                        png_bytes = page.screenshot(type="png", omit_background=False)
+                        if ffmpeg_proc.poll() is not None:
+                            break
+                        ffmpeg_proc.stdin.write(png_bytes)
+                        # Remove flush, or ignore flush error
+                        try:
+                            ffmpeg_proc.stdin.flush()
+                        except Exception:
+                            pass
                     except BrokenPipeError:
+                        break
+                    except Exception as e:
+                        if "closed file" in str(e):
+                            break
+                        print(f"Failed to stream frame {frame}: {e}")
                         break
 
                     if frame % 30 == 0:
@@ -245,8 +237,14 @@ class PlaywrightRenderEngine:
                 browser.close()
                 if temp_html_path.exists(): os.remove(temp_html_path)
 
-        ffmpeg_proc.stdin.close()
+        try:
+            ffmpeg_proc.stdin.close()
+        except Exception:
+            pass
+
         ffmpeg_proc.communicate()
+        if ffmpeg_proc.returncode != 0:
+            print(f"FFmpeg Pass 1 failed with return code {ffmpeg_proc.returncode}")
 
         # Pass 2: Mux Audio into MP4
         print(f"\n[{scene_id}] Pass 2: Muxing Audio...")
