@@ -6,6 +6,7 @@ import urllib.parse
 import wave
 import math
 import struct
+import random
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from playwright.sync_api import sync_playwright
@@ -121,38 +122,72 @@ class PlaywrightRenderEngine:
         return temp_html
 
     def _generate_sfx_track(self, timestamps: list, duration_sec: float, output_path: Path):
-        """Generates a synchronized pop sound effect track."""
+        """Generates advanced cinematic SFX programmatically."""
         sample_rate = 48000
         n_samples = int(sample_rate * duration_sec)
         audio_data = [0.0] * n_samples
 
+        def mix_sound(start_sample, sound_data):
+            for i, val in enumerate(sound_data):
+                idx = start_sample + i
+                if idx < n_samples:
+                    audio_data[idx] += val
+
+        # 1. Generate a cinematic impact at the start of the scene (T=0)
+        impact_dur = 1.0
+        impact_samples = int(impact_dur * sample_rate)
+        impact_data = []
+        for i in range(impact_samples):
+            t = i / sample_rate
+            # Sub bass drop (pitch sweep from 150hz down to 40hz)
+            freq = 150 * math.exp(-t * 5)
+            sub = 0.6 * math.sin(2.0 * math.pi * freq * t)
+            # Noise burst
+            noise = (random.random() * 2 - 1) * 0.3 * math.exp(-t * 15)
+            # Overall envelope
+            envelope = math.exp(-t * 3)
+            impact_data.append((sub + noise) * envelope)
+        mix_sound(0, impact_data)
+
+        # 2. Generate a transition whoosh at the start of the scene (T=0)
+        whoosh_dur = 0.8
+        whoosh_samples = int(whoosh_dur * sample_rate)
+        whoosh_data = []
+        for i in range(whoosh_samples):
+            t = i / sample_rate
+            # White noise filtered by an envelope that swells then decays
+            noise = (random.random() * 2 - 1)
+            envelope = (math.sin(t * math.pi / whoosh_dur)) ** 3
+            whoosh_data.append(noise * envelope * 0.15)
+        mix_sound(0, whoosh_data)
+
+        # 3. Generate UI ticks for each word
         for ts in timestamps:
             start_time = ts.get("start", 0.0)
             start_sample = int(start_time * sample_rate)
 
-            # Simple "pop" sound: quick sine wave burst with exponential decay
-            pop_duration = 0.05
-            pop_samples = int(pop_duration * sample_rate)
-            pop_freq = 800.0
-
-            for i in range(pop_samples):
-                idx = start_sample + i
-                if idx < n_samples:
-                    t = i / sample_rate
-                    decay = math.exp(-t * 60) # Fast decay
-                    val = 0.15 * math.sin(2.0 * math.pi * pop_freq * t) * decay
-                    audio_data[idx] += val
+            tick_dur = 0.02
+            tick_samples = int(tick_dur * sample_rate)
+            tick_data = []
+            for i in range(tick_samples):
+                t = i / sample_rate
+                # High frequency click
+                freq = 2500
+                decay = math.exp(-t * 300)
+                val = 0.08 * math.sin(2.0 * math.pi * freq * t) * decay
+                tick_data.append(val)
+            mix_sound(start_sample, tick_data)
 
         with wave.open(str(output_path), 'w') as wav_file:
             wav_file.setnchannels(1)
             wav_file.setsampwidth(2)
             wav_file.setframerate(sample_rate)
 
-            # Pack data
+            # Pack data (with soft clipping)
             packed_data = bytearray()
             for sample in audio_data:
-                # clamp and convert to 16-bit int
-                clamped = max(-1.0, min(1.0, sample))
+                # Soft clipping tanh approximation for warmth
+                clamped = math.tanh(sample)
                 int_val = int(clamped * 32767)
                 packed_data.extend(struct.pack('<h', int_val))
 
