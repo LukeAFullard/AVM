@@ -52,6 +52,7 @@ class PlaywrightRenderEngine:
         bbox = visual_source.get("crop_bbox_pct", [0, 0, 100, 100])
 
         media_type = "image"
+        media_attribution = ""
 
         if source_type == "external_broll":
             broll_query = visual_source.get("broll_search_query", "")
@@ -79,6 +80,8 @@ class PlaywrightRenderEngine:
                                         if media_url:
                                             media_type = "video"
                                             downloaded_ext = "mp4"
+                                            video_author = videos[0].get("user", {}).get("name", "Unknown Artist")
+                                            media_attribution = f"Video by {video_author} on Pexels"
                         except Exception as e:
                             print(f"Failed to fetch external video broll from Pexels: {e}")
 
@@ -92,6 +95,8 @@ class PlaywrightRenderEngine:
                                     photos = data.get("photos", [])
                                     if photos:
                                         media_url = photos[0].get("src", {}).get("large2x") or photos[0].get("src", {}).get("original")
+                                        photo_author = photos[0].get("photographer", "Unknown Artist")
+                                        media_attribution = f"Photo by {photo_author} on Pexels"
                             except Exception as e:
                                 print(f"Failed to fetch external image broll from Pexels: {e}")
 
@@ -99,7 +104,7 @@ class PlaywrightRenderEngine:
                         # Fallback to Wikimedia Commons (images only)
                         try:
                             # Enforce Public Domain / CC0 for legal monetization without complex attribution
-                            url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}%20incategory:%22Public_domain%22&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url&format=json"
+                            url = f"https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=filetype:bitmap%20{encoded_query}%20incategory:%22Public_domain%22&gsrnamespace=6&gsrlimit=1&prop=imageinfo&iiprop=url|extmetadata&format=json"
                             req = urllib.request.Request(url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
                             with urllib.request.urlopen(req) as response:
                                 data = json.loads(response.read().decode())
@@ -109,6 +114,11 @@ class PlaywrightRenderEngine:
                                     image_info = first_page.get("imageinfo", [])
                                     if image_info:
                                         media_url = image_info[0].get("url")
+                                        photo_author = image_info[0].get("extmetadata", {}).get("Artist", {}).get("value", "Unknown Artist")
+                                        # Strip HTML tags if present in author
+                                        import re
+                                        photo_author = re.sub('<[^<]+>', '', photo_author)
+                                        media_attribution = f"Media by {photo_author} (Wikimedia Commons)"
                         except Exception as e:
                             print(f"Failed to fetch external broll from Wikimedia Commons: {e}")
 
@@ -126,6 +136,20 @@ class PlaywrightRenderEngine:
                         bbox = [10.0, 10.0, 90.0, 90.0]
                 except Exception as e:
                     print(f"Failed to fetch external broll for query '{broll_query}': {e}")
+
+            # Local fallback if APIs are disabled or fail
+            if image_path == self.project_dir / "00_source_page.png":
+                local_broll_dir = self.project_dir.parent.parent / "local_broll"
+                if local_broll_dir.exists() and any(local_broll_dir.iterdir()):
+                    print(f"Using random local B-roll from {local_broll_dir}")
+                    import random
+                    valid_files = [f for f in local_broll_dir.iterdir() if f.suffix.lower() in ['.mp4', '.mov', '.png', '.jpg', '.jpeg']]
+                    if valid_files:
+                        chosen_broll = random.choice(valid_files)
+                        image_path = chosen_broll
+                        media_type = "video" if chosen_broll.suffix.lower() in ['.mp4', '.mov'] else "image"
+                        bbox = [0, 0, 100, 100]
+                        media_attribution = f"Local Media ({chosen_broll.name})"
                     # Fallback to source page if API fails
                     pass
 
@@ -145,7 +169,8 @@ class PlaywrightRenderEngine:
             duration_sec=duration_sec,
             global_style=global_style,
             highlight_words=highlight_words,
-            source_type=source_type
+            source_type=source_type,
+            media_attribution=media_attribution
         )
         temp_html = self.project_dir / "temp_render.html"
         with open(temp_html, "w", encoding="utf-8") as f:
