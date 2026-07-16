@@ -35,35 +35,61 @@ PYTHONPATH=. python src/main_pipeline.py --pdf_path <path_to_pdf> --model_path d
 
 ## Setup
 
-### 1. System Dependencies
-You need to install the core system dependencies required for video rendering, optical character recognition, and audio synthesis:
+### Step 1: Install System Dependencies
+You need to install the core system dependencies required for video rendering, optical character recognition, and audio synthesis.
 
-**Ubuntu/Debian:**
+For **Ubuntu/Debian** systems, run:
 ```bash
 sudo apt-get update
 sudo apt-get install -y ffmpeg poppler-utils tesseract-ocr fluidsynth fluid-soundfont-gm
 ```
-**macOS:**
+
+For **macOS** systems, run:
 ```bash
 brew install ffmpeg poppler tesseract fluidsynth fluid-synth
 ```
 
-### 2. Python Environment Setup
-Install the required Python packages. It is highly recommended to use a virtual environment:
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+### Step 2: Set Up Python Environment
+Install the required Python packages. It is highly recommended to use a virtual environment to avoid conflicts.
 
-### 3. Playwright Setup
-The rendering engine uses Playwright (Chromium) to stream HTML5 canvas animations directly to FFmpeg. You must install the Playwright browsers:
-```bash
-playwright install chromium
-playwright install-deps chromium
-```
+1. Create a virtual environment:
+   ```bash
+   python3 -m venv venv
+   ```
+2. Activate the virtual environment:
+   - On Linux/macOS:
+     ```bash
+     source venv/bin/activate
+     ```
+   - On Windows:
+     ```bash
+     venv\Scripts\activate
+     ```
+3. Install the required Python packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 4. API Keys & Local B-Roll (Optional)
+### Step 3: Install Playwright
+The rendering engine uses Playwright (Chromium) to stream HTML5 canvas animations directly to FFmpeg. You must install the Playwright browsers.
+
+Run the following commands:
+1. Install the Chromium browser:
+   ```bash
+   playwright install chromium
+   ```
+2. Install necessary system dependencies for Chromium (Ubuntu/Debian only):
+   ```bash
+   playwright install-deps chromium
+   ```
+
+### Step 4: AI Models Setup (LLM & TTS)
+Gemma 4 is a Large Language Model (LLM), and Piper is a Text-To-Speech (TTS) engine. Their model weights **are not** installed via `requirements.txt` (which only installs the inference engines like `llama-cpp-python` and `piper-tts`). You must download the weights manually.
+
+1. **Download Gemma 4 Model Weights:** Download the appropriate Gemma 4 model weights from a source like Hugging Face. You will pass the path to this file to the pipeline using the `--model_path` argument.
+2. **Download Piper Voice Model:** Download the Piper voice model weights you wish to use. You will pass the path to this file using the `--voice_model` argument.
+
+### Step 5: API Keys & Local B-Roll (Optional)
 To enable high-quality TTS and dynamic external B-roll, set your API keys in your environment variables:
 ```bash
 export ELEVENLABS_API_KEY="your_elevenlabs_key"  # For premium AI voices
