@@ -47,6 +47,8 @@ class PlaywrightRenderEngine:
         visual_source = scene_config.get("visual_source", {})
         highlight_words = [w.lower() for w in scene_config.get("highlight_words", [])]
         source_type = visual_source.get("source_type", "magazine_scan")
+        transition_in = scene_config.get("transition_in", "cut")
+        template_component = scene_config.get("template_component", "headline_zoom")
 
         image_path = self.project_dir / "00_source_page.png"
         bbox = visual_source.get("crop_bbox_pct", [0, 0, 100, 100])
@@ -153,6 +155,52 @@ class PlaywrightRenderEngine:
                     # Fallback to source page if API fails
                     pass
 
+        secondary_media_path = ""
+        secondary_media_type = ""
+
+        if template_component == "split_screen_broll":
+            pexels_api_key = os.environ.get("PEXELS_API_KEY")
+            secondary_media_url = None
+            if pexels_api_key:
+                try:
+                    # Query for something satisfying
+                    sec_query = urllib.parse.quote("satisfying kinetic sand")
+                    url = f"https://api.pexels.com/videos/search?query={sec_query}&orientation=portrait&per_page=1"
+                    req = urllib.request.Request(url, headers={'Authorization': pexels_api_key})
+                    with urllib.request.urlopen(req) as response:
+                        data = json.loads(response.read().decode())
+                        videos = data.get("videos", [])
+                        if videos:
+                            video_files = videos[0].get("video_files", [])
+                            if video_files:
+                                best_video = max(video_files, key=lambda v: (v.get("width", 0) * v.get("height", 0)))
+                                secondary_media_url = best_video.get("link")
+                except Exception as e:
+                    print(f"Failed to fetch secondary broll from Pexels: {e}")
+
+            scene_id = scene_config.get("scene_ref_id", "temp_sec")
+            temp_sec_path = self.project_dir / f"00_secondary_broll_{scene_id}.mp4"
+
+            if secondary_media_url:
+                try:
+                    download_req = urllib.request.Request(secondary_media_url, headers={'User-Agent': 'AVM-Pipeline/1.0'})
+                    with urllib.request.urlopen(download_req) as dl_response:
+                        with open(temp_sec_path, 'wb') as f:
+                            f.write(dl_response.read())
+                    secondary_media_path = temp_sec_path
+                    secondary_media_type = "video"
+                except Exception as e:
+                    print(f"Failed to download secondary broll: {e}")
+            else:
+                local_broll_dir = self.project_dir.parent.parent / "local_broll"
+                if local_broll_dir.exists() and any(local_broll_dir.iterdir()):
+                    import random
+                    valid_files = [f for f in local_broll_dir.iterdir() if f.suffix.lower() in ['.mp4', '.mov']]
+                    if valid_files:
+                        chosen_broll = random.choice(valid_files)
+                        secondary_media_path = chosen_broll
+                        secondary_media_type = "video"
+
         if global_style is None:
             global_style = {
                 "font_family": "Bebas Neue",
@@ -161,24 +209,33 @@ class PlaywrightRenderEngine:
                 "animation_easing": "cubic"
             }
 
-        html_content = template.render(
-            image_path=f"file://{image_path.absolute()}",
-            media_type=media_type,
-            bbox=bbox,
-            timestamps=timestamps,
-            duration_sec=duration_sec,
-            global_style=global_style,
-            highlight_words=highlight_words,
-            source_type=source_type,
-            media_attribution=media_attribution
-        )
+        render_kwargs = {
+            "image_path": f"file://{image_path.absolute()}",
+            "media_type": media_type,
+            "bbox": bbox,
+            "timestamps": timestamps,
+            "duration_sec": duration_sec,
+            "global_style": global_style,
+            "highlight_words": highlight_words,
+            "source_type": source_type,
+            "media_attribution": media_attribution,
+            "transition_in": transition_in,
+            "template_component": template_component
+        }
+        if secondary_media_path:
+            render_kwargs["secondary_media_path"] = f"file://{secondary_media_path.absolute()}"
+            render_kwargs["secondary_media_type"] = secondary_media_type
+
+        html_content = template.render(**render_kwargs)
         temp_html = self.project_dir / "temp_render.html"
         with open(temp_html, "w", encoding="utf-8") as f:
             f.write(html_content)
         return temp_html
 
-    def _generate_sfx_track(self, timestamps: list, duration_sec: float, output_path: Path):
+    def _generate_sfx_track(self, timestamps: list, duration_sec: float, output_path: Path, highlight_words: list = None):
         """Generates advanced cinematic SFX using MIDI & FluidSynth."""
+        if highlight_words is None:
+            highlight_words = []
         track = 0
         time = 0
         tempo = 120
@@ -207,7 +264,14 @@ class PlaywrightRenderEngine:
         for ts in timestamps:
             start_time = ts.get("start", 0.0)
             beat = start_time * (tempo / 60.0)
-            MyMIDI.addNote(track, 2, 60, beat, 0.25, 90)
+
+            raw_word = ts.get("text", ts.get("word", ""))
+            clean_word = raw_word.replace(",", "").replace(".", "").replace("!", "").replace("?", "").lower()
+
+            if clean_word in highlight_words:
+                MyMIDI.addNote(track, 2, 65, beat, 0.25, 120)
+            else:
+                MyMIDI.addNote(track, 2, 60, beat, 0.25, 90)
 
         temp_midi = output_path.with_suffix(".mid")
         with open(temp_midi, "wb") as output_file:
@@ -238,8 +302,10 @@ class PlaywrightRenderEngine:
         audio_path = self.project_dir / "04_audio_payload" / f"narration_{scene_id}.wav"
         sfx_path = self.project_dir / "04_audio_payload" / f"sfx_pops_{scene_id}.wav"
 
+        highlight_words = [w.lower() for w in scene_config.get("highlight_words", [])]
+
         # Generate the synchronized sound effects track
-        self._generate_sfx_track(timestamps, duration_sec, sfx_path)
+        self._generate_sfx_track(timestamps, duration_sec, sfx_path, highlight_words)
 
         output_mp4 = self.project_dir / "06_exports" / f"{scene_id}.mp4"
         temp_video_mkv = self.project_dir / "06_exports" / f"temp_{scene_id}_video.mkv"
