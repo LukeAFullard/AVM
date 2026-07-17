@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&family=Oswald:wght@700&display=swap" rel="stylesheet">
+  {% if global_style and global_style.font_family %}
+    {% set font_name = global_style.font_family %}
+  {% else %}
+    {% set font_name = "Bebas Neue" %}
+  {% endif %}
+  {% set font_query = font_name | replace(" ", "+") %}
+  <link href="https://fonts.googleapis.com/css2?family={{ font_query }}&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <style>
     :root {
       --xmin: {{ bbox[0] }};
@@ -273,6 +279,20 @@
               const hue = (random(frame + 20) * 360 * (glitchAmount / 20));
               magContainer.style.transform = `translate(${jitterX}px, ${jitterY}px)`;
               magContainer.style.filter = `hue-rotate(${hue}deg) contrast(${1 + (glitchAmount / 10)})`;
+              magContainer.style.clipPath = 'none';
+          } else if (transitionIn === 'film_burn') {
+              fadeOverlay.style.opacity = 0;
+              const burnBright = interpolate(progress, [0, 0.05], [3, 1], { easing: Easing.out(Easing.cubic) });
+              const burnContrast = interpolate(progress, [0, 0.05], [2, 1], { easing: Easing.out(Easing.cubic) });
+              const burnHue = interpolate(progress, [0, 0.05], [-50, 0], { easing: Easing.linear });
+              magContainer.style.filter = `brightness(${burnBright}) contrast(${burnContrast}) hue-rotate(${burnHue}deg)`;
+              magContainer.style.clipPath = 'none';
+          } else if (transitionIn === 'zoom_blur') {
+              fadeOverlay.style.opacity = 0;
+              const blurAmt = interpolate(progress, [0, 0.05], [20, 0], { easing: Easing.out(Easing.cubic) });
+              const zoomAmt = interpolate(progress, [0, 0.05], [2.0, 1.0], { easing: Easing.out(Easing.cubic) });
+              magContainer.style.filter = `blur(${blurAmt}px)`;
+              magContainer.style.transform = `scale(${zoomAmt})`;
               magContainer.style.clipPath = 'none';
           } else { // cut
               fadeOverlay.style.opacity = 0;

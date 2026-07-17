@@ -383,7 +383,11 @@ class PlaywrightRenderEngine:
         if self.bgm_path and os.path.exists(self.bgm_path):
             ffmpeg_cmd_mux.extend(["-stream_loop", "-1", "-i", self.bgm_path])
             ffmpeg_cmd_mux.extend([
-                "-filter_complex", "[1:a][2:a][3:a][4:a][5:a][6:a]amix=inputs=6:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3 0.15[a]",
+                "-filter_complex",
+                "[1:a]asplit=2[narr_mix][narr_sc];"
+                "[6:a]volume=0.3[bgm_vol];"
+                "[bgm_vol][narr_sc]sidechaincompress=threshold=0.015:ratio=4:attack=5:release=50[bgm_ducked];"
+                "[narr_mix][2:a][3:a][4:a][5:a][bgm_ducked]amix=inputs=6:duration=first:dropout_transition=2:weights=1.0 0.8 0.5 0.5 0.3 1.0[a]",
                 "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(output_mp4)
             ])
         else:
