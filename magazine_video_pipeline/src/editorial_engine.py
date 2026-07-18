@@ -133,8 +133,45 @@ class EditorialEngine:
             render_manifest_path = workspace_path / "05_render_manifest.json"
             if not render_manifest_path.exists() or visual_feedback:
                 self.run_visual_planner(workspace_path, feedback=visual_feedback)
+
+            # 4. YouTube Metadata Generator
+            metadata_path = workspace_path / "06_youtube_metadata.json"
+            if not metadata_path.exists():
+                self.run_youtube_metadata_generator(workspace_path)
         except Exception as e:
             logger.error(f"Error processing workspace {workspace_path}: {e}")
+
+    def run_youtube_metadata_generator(self, workspace_path: Path):
+        logger.info(f"Running YouTube Metadata Generator for {workspace_path.name}")
+        output_path = workspace_path / "06_youtube_metadata.json"
+
+        if self.llm == "dummy":
+            # Dummy mode for testing
+            dummy_data = {
+                "title": "Unbelievable Vintage Discovery! 🤯",
+                "description": "We uncovered a forgotten piece of history. Subscribe for more vintage stories!",
+                "hashtags": ["vintage", "history", "shorts"]
+            }
+            with open(output_path, "w") as f:
+                json.dump(dummy_data, f, indent=4)
+            return
+
+        with open(workspace_path / "03_storyboard.json") as f:
+            storyboard = json.load(f)
+
+        prompt = (
+            "You are an expert YouTube Shorts social media manager.\n"
+            "Based on the following video storyboard, generate an optimized, highly engaging YouTube metadata payload.\n"
+            "Include a catchy title, a short description, and 3-5 relevant hashtags.\n\n"
+            f"Storyboard:\n{json.dumps(storyboard, indent=2)}\n\n"
+            "Output strictly valid JSON matching the provided schema."
+        )
+
+        schema = self._load_schema("06_youtube_metadata.json")
+        result = self._generate_json(prompt, schema)
+
+        with open(output_path, "w") as f:
+            json.dump(result, f, indent=4)
 
     def run_topic_detector(self, workspace_path: Path):
         logger.info("Running Topic Detector Agent...")

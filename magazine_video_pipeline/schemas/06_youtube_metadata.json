@@ -1,0 +1,23 @@
+{
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": "string",
+            "description": "An engaging, viral-optimized title for the YouTube Short. Must be under 60 characters and include an emotional or curiosity-driven hook."
+        },
+        "description": {
+            "type": "string",
+            "description": "A 2-3 sentence description of the video content, encouraging viewers to subscribe."
+        },
+        "hashtags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "A list of 3-5 highly relevant, viral hashtags (e.g., '#vintage', '#history'). Do not include the '#' symbol in the strings.",
+            "minItems": 3,
+            "maxItems": 5
+        }
+    },
+    "required": ["title", "description", "hashtags"]
+}
